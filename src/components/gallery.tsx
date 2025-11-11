@@ -2,9 +2,10 @@
 
 import { GalleryItem } from "./gallery-item";
 import { useGallery } from "@/contexts/gallery-context";
+import { Button } from "@/components/ui/button";
 
 export function Gallery() {
-  const { items, isLoading } = useGallery();
+  const { items, isLoading, loadMore, hasMore, isLoadingMore } = useGallery();
 
   if (isLoading && items.length === 0) {
     return null;
@@ -28,6 +29,18 @@ export function Gallery() {
           />
         ))}
       </div>
+
+      {hasMore && (
+        <div className="mt-8 flex justify-center">
+          <Button
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            variant="outline"
+          >
+            {isLoadingMore ? "Loading..." : "Load More"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

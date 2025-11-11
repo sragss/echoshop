@@ -16,6 +16,9 @@ interface GalleryContextValue {
   addGenerated: (clientId: string, serverId: string) => void;
   addError: (clientId: string, error: string) => void;
   removeGenerating: (clientId: string) => void;
+  loadMore: () => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
 }
 
 const GalleryContext = createContext<GalleryContextValue | null>(null);
@@ -26,8 +29,22 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   const [errors, setErrors] = useState<ErrorItem[]>([]);
   const utils = api.useUtils();
 
-  // Subscribe to loaded outputs from tRPC
-  const { data: loaded, isLoading } = api.output.getAll.useQuery();
+  // Subscribe to loaded outputs from tRPC with pagination
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = api.output.getAll.useInfiniteQuery(
+    { limit: 20 },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+    }
+  );
+
+  // Flatten all pages into a single array
+  const loaded = data?.pages.flatMap((page) => page.items) ?? null;
 
   const addGenerating = useCallback((item: GeneratingItem) => {
     setGenerating((prev) => [item, ...prev]);
@@ -123,6 +140,12 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
     ];
   }, [generating, generated, loaded, errors]);
 
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   const contextValue = {
     items,
     isLoading,
@@ -130,6 +153,9 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
     addGenerated: (clientId: string, serverId: string) => void addGenerated(clientId, serverId),
     addError,
     removeGenerating,
+    loadMore,
+    hasMore: hasNextPage ?? false,
+    isLoadingMore: isFetchingNextPage,
   };
 
   return (
