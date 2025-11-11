@@ -19,7 +19,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (pathname) => {
+      onBeforeGenerateToken: async (_pathname) => {
         // Construct callback URL for onUploadCompleted
         // In production on Vercel, this uses VERCEL_URL automatically
         // In local dev, this won't work (expected - localhost not publicly accessible)

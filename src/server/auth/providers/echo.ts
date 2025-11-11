@@ -1,4 +1,4 @@
-import type { OAuth2Config, OAuthUserConfig } from '@auth/core/providers';
+import type { OAuth2Config, OAuthUserConfig } from 'next-auth/providers';
 
 export interface EchoUser {
   sub: string;
@@ -93,7 +93,7 @@ export default function Echo(
         id: profile.sub,
         name: profile.name,
         email: profile.email,
-        image: profile.picture || null,
+        image: profile.picture ?? null,
       };
     },
     client: {

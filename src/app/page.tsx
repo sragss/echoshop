@@ -8,7 +8,7 @@ import {
   usePromptInputController,
 } from '@/components/ai-elements/prompt-input';
 import { modelCategories } from '@/config/models';
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useUpload } from '@/hooks/use-upload';
@@ -80,7 +80,7 @@ function HomeContent() {
     }
   };
 
-  const handleSubmit = (message: PromptInputMessage) => {
+  const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
     const hasFiles = Boolean(message.files?.length);
 
@@ -100,26 +100,50 @@ function HomeContent() {
       return;
     }
 
-    // Map files to their uploaded URLs
-    const filesWithUploadedUrls = message.files?.map((file) => {
-      const uploadedUrl = uploadedUrls.get((file as any).id);
-      if (uploadedUrl) {
-        return {
-          ...file,
-          url: uploadedUrl,
-        };
+    // Only support nano-banana for now
+    if (selectedModel !== "nano-banana") {
+      alert("Only nano-banana model is supported at this time");
+      return;
+    }
+
+    // Don't support image attachments yet
+    if (hasFiles) {
+      alert("Image attachments not yet supported");
+      return;
+    }
+
+    try {
+      console.log("Generating image with prompt:", message.text);
+
+      // Call the image generation API
+      const response = await fetch("/api/echo/generate-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: message.text,
+          images: [],
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Image generation failed");
       }
-      return file;
-    });
 
-    console.log("Submitted:", {
-      text: message.text,
-      model: selectedModel,
-      files: filesWithUploadedUrls,
-    });
+      const result = await response.json();
+      console.log("Generated image:", result);
 
-    // Clear state
-    setUploadedUrls(new Map());
+      // TODO: Display the image result
+      alert(`Image generated! URL: ${result.url}`);
+
+      // Clear state
+      setUploadedUrls(new Map());
+    } catch (error) {
+      console.error("Image generation error:", error);
+      alert(error instanceof Error ? error.message : "Failed to generate image");
+    }
   };
 
   return (

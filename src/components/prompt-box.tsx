@@ -46,7 +46,7 @@ function CustomAttachment({
 }) {
   const attachments = usePromptInputAttachments();
   const isImage = data.mediaType?.startsWith("image/") && data.url;
-  const filename = data.filename || "";
+  const filename = data.filename ?? "";
   const isUploading = uploadProgress?.isUploading ?? false;
   const progress = uploadProgress?.progress ?? 0;
 
@@ -56,6 +56,7 @@ function CustomAttachment({
         <div className="group relative size-16 shrink-0">
           <div className="size-16 overflow-hidden rounded-md border border-border">
             {isImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 alt={filename || "attachment"}
                 className="size-full object-cover"
@@ -119,6 +120,7 @@ function CustomAttachment({
       <HoverCardContent className="w-auto p-2">
         {isImage && (
           <div className="flex max-h-96 w-96 items-center justify-center overflow-hidden rounded-md border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               alt={filename || "attachment preview"}
               className="max-h-full max-w-full object-contain"
