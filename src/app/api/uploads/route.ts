@@ -20,29 +20,34 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
       onBeforeGenerateToken: async (pathname) => {
+        // Construct callback URL for onUploadCompleted
+        // In production on Vercel, this uses VERCEL_URL automatically
+        // In local dev, this won't work (expected - localhost not publicly accessible)
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000';
+
         return {
           allowedContentTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
           tokenPayload: JSON.stringify({
             userId: session.user.id,
           }),
           maximumSizeInBytes: 10 * 1024 * 1024, // 10MB
+          addRandomSuffix: true, // Prevent filename conflicts
+          callbackUrl: `${baseUrl}/api/uploads`,
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log('Upload completed', blob.url);
-
         try {
           const payload = JSON.parse(tokenPayload ?? '{}') as { userId: string };
 
           // Save upload metadata to database
-          // Note: blob object has url, pathname, contentType, contentDisposition, downloadUrl
-          // Size is not available here, we'll default to 0 for now
           await db.upload.create({
             data: {
               blobUrl: blob.url,
               filename: blob.pathname,
               mediaType: blob.contentType,
-              size: 0, // Size not available in onUploadCompleted callback
+              size: 0, // Size not available in blob object
               userId: payload.userId,
             },
           });

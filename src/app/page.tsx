@@ -24,16 +24,33 @@ function HomeContent() {
 
   // Handle newly added files
   const handleFilesAdded = async (newFiles: Array<{ id: string; url: string; filename?: string; mediaType?: string }>) => {
+    // Define allowed image types (must match API route validation)
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+
+    // Filter out unsupported file types immediately
+    const validFiles: typeof newFiles = [];
+    for (const fileData of newFiles) {
+      const mediaType = fileData.mediaType?.toLowerCase() ?? '';
+
+      if (!allowedTypes.includes(mediaType)) {
+        console.warn(`File type not supported: ${mediaType}. Removing attachment.`);
+        controller.attachments.remove(fileData.id);
+        continue;
+      }
+
+      validFiles.push(fileData);
+    }
+
     // Only upload if user is authenticated
     if (!session?.user) {
       setShowAuthDialog(true);
       // Remove the files if not authenticated
-      newFiles.forEach(file => controller.attachments.remove(file.id));
+      validFiles.forEach(file => controller.attachments.remove(file.id));
       return;
     }
 
-    // Upload each new file
-    for (const fileData of newFiles) {
+    // Upload each valid file
+    for (const fileData of validFiles) {
       // Skip if already uploaded or uploading
       if (uploadedUrls.has(fileData.id) || uploadProgress.has(fileData.id)) {
         continue;
@@ -57,7 +74,7 @@ function HomeContent() {
         });
       } catch (error) {
         console.error('Upload failed:', error);
-        // Optionally remove failed uploads
+        // Remove failed uploads
         controller.attachments.remove(fileData.id);
       }
     }

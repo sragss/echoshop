@@ -108,7 +108,19 @@ The application uses tRPC for end-to-end type-safe APIs:
 - **Required vars:**
   - `DATABASE_URL` - PostgreSQL connection string
   - `AUTH_SECRET` - NextAuth secret (generate with `npx auth secret`)
+  - `BLOB_READ_WRITE_TOKEN` - Vercel Blob storage token (get from Vercel dashboard)
 - Set `SKIP_ENV_VALIDATION=1` to skip validation (useful for Docker builds)
+
+### File Upload (Vercel Blob)
+
+- **Upload hook:** `src/hooks/use-upload.ts` - Client-side upload hook with progress tracking
+- **API route:** `src/app/api/uploads/route.ts` - Handles file uploads to Vercel Blob
+- **tRPC router:** `src/server/api/routers/upload.ts` - Database operations for upload metadata
+- **Database model:** `Upload` in `prisma/schema.prisma` - Tracks all uploaded files
+- Files are uploaded directly from client to Vercel Blob (bypasses Next.js server for large files)
+- Upload progress is tracked per file with circular progress indicator
+- All uploads are associated with authenticated users
+- Supported formats: JPEG, PNG, GIF, WebP (max 10MB)
 
 ### Frontend Structure
 
