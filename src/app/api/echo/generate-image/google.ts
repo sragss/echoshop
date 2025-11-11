@@ -1,15 +1,9 @@
-import { z } from 'zod';
 import { getGoogleClient, extractImageFromResponse } from '@/server/ai/google';
 import { uploadGeneratedImage } from '@/lib/blob-upload';
+import { db } from '@/server/db';
+import type { GenerateImageInput } from '@/lib/generation-schema';
 
-// Zod schema for generate image request
-export const generateImageSchema = z.object({
-    prompt: z.string().min(1, "Prompt cannot be empty"),
-});
-
-export type GenerateImageInput = z.infer<typeof generateImageSchema>;
-
-export async function generateImage(input: GenerateImageInput): Promise<{ id: string; url: string }> {
+export async function generateImage(input: GenerateImageInput, userId: string): Promise<{ id: string; url: string }> {
     const google = await getGoogleClient();
 
     const response = await google.models.generateContent({
@@ -22,7 +16,14 @@ export async function generateImage(input: GenerateImageInput): Promise<{ id: st
     // Upload to Vercel Blob storage and get UUID + URL
     const result = await uploadGeneratedImage(imageBuffer, 'image/png');
 
-    // TODO(sragss): Add to Outputs table (input, user, output_UUID)
+    // Save to Outputs table
+    await db.output.create({
+        data: {
+            userId,
+            input: input as any, // Prisma Json type
+            outputUrl: result.url,
+        },
+    });
 
     return result;
 }

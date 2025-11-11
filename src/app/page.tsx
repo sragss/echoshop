@@ -2,6 +2,7 @@
 
 import { AuthDialog } from '@/components/auth-dialog';
 import { Designer } from '@/components/designer';
+import { Gallery } from '@/components/gallery';
 import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
 import { modelCategories } from '@/config/models';
 import { useState } from "react";
@@ -28,12 +29,14 @@ function HomeContent() {
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-4">
-        <Designer
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-          onAuthRequired={() => setShowAuthDialog(true)}
-        />
+      <main className="flex flex-1 flex-col items-center px-4 py-8">
+          <Designer
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            onAuthRequired={() => setShowAuthDialog(true)}
+          />
+
+        {session?.user && <Gallery />}
       </main>
 
       <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />

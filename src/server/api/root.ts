@@ -1,5 +1,6 @@
 import { postRouter } from '@/server/api/routers/post';
 import { uploadRouter } from '@/server/api/routers/upload';
+import { outputRouter } from '@/server/api/routers/output';
 import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc';
 
 /**
@@ -10,6 +11,7 @@ import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc';
 export const appRouter = createTRPCRouter({
   post: postRouter,
   upload: uploadRouter,
+  output: outputRouter,
 });
 
 // export type definition of API

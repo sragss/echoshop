@@ -1,16 +1,9 @@
-import { z } from 'zod';
 import { getGoogleClient, extractImageFromResponse } from '@/server/ai/google';
 import { uploadGeneratedImage } from '@/lib/blob-upload';
+import { db } from '@/server/db';
+import type { EditImageInput } from '@/lib/generation-schema';
 
-// Zod schema for edit image request
-export const editImageSchema = z.object({
-    prompt: z.string().min(1, "Prompt cannot be empty"),
-    images: z.array(z.string().url("Invalid blob URL")).min(1, "At least one image is required"),
-});
-
-export type EditImageInput = z.infer<typeof editImageSchema>;
-
-export async function editImage(input: EditImageInput): Promise<{ id: string; url: string }> {
+export async function editImage(input: EditImageInput, userId: string): Promise<{ id: string; url: string }> {
     const google = await getGoogleClient();
 
     // Fetch images directly from blob storage URLs
@@ -51,7 +44,14 @@ export async function editImage(input: EditImageInput): Promise<{ id: string; ur
     // Upload to Vercel Blob storage and get UUID + URL
     const result = await uploadGeneratedImage(imageBuffer, 'image/png');
 
-    // TODO(sragss): Add to Outputs table (input, user, input_image_UUIDs, output_UUID)
+    // Save to Outputs table
+    await db.output.create({
+        data: {
+            userId,
+            input: input as any, // Prisma Json type
+            outputUrl: result.url,
+        },
+    });
 
     return result;
 }

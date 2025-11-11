@@ -1,12 +1,31 @@
 import { NextResponse } from 'next/server';
-import { editImage, editImageSchema } from './google';
+import { editImage } from './google';
+import { auth } from '@/server/auth';
+import { editImageSchema } from '@/lib/generation-schema';
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
+    // Build full schema with model and operation
+    const inputWithMeta = {
+      model: body.model || 'nano-banana',
+      operation: 'edit' as const,
+      prompt: body.prompt,
+      images: body.images,
+    };
+
     // Validate request body
-    const validation = editImageSchema.safeParse(body);
+    const validation = editImageSchema.safeParse(inputWithMeta);
     if (!validation.success) {
       return NextResponse.json(
         { error: validation.error.errors[0]?.message || 'Invalid request' },
@@ -15,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     // Edit image using Google/Gemini
-    const result = await editImage(validation.data);
+    const result = await editImage(validation.data, session.user.id);
 
     return NextResponse.json({
       id: result.id,
