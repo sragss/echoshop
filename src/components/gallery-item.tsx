@@ -44,7 +44,7 @@ export function GalleryItem({ data }: { data: GalleryItemData }) {
   if (data.type === "loading") {
     // Render loading state
     return (
-      <div className="aspect-square relative overflow-hidden rounded border border-gray-200 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
+      <div className="aspect-square relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
         <div className="flex items-center justify-center h-full bg-gray-100 animate-pulse">
           <LoadingTimer startTime={data.item.timestamp} />
         </div>
@@ -55,7 +55,7 @@ export function GalleryItem({ data }: { data: GalleryItemData }) {
   if (data.type === "error") {
     // Render error state
     return (
-      <div className="aspect-square relative overflow-hidden rounded border-2 border-red-300 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
+      <div className="aspect-square relative overflow-hidden rounded-md border-2 border-red-300 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
         <div className="flex flex-col items-center justify-center h-full p-4 bg-red-50">
           <XCircle className="h-12 w-12 text-red-400 mb-2" />
           <p className="text-xs text-red-600 text-center mb-2">
@@ -101,7 +101,7 @@ export function GalleryItem({ data }: { data: GalleryItemData }) {
 
   return (
     <>
-      <div className="aspect-square relative overflow-hidden rounded border border-gray-200 bg-white shadow-sm group cursor-pointer">
+      <div className="aspect-square relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm group cursor-pointer">
         <button
           onClick={() => setDialogOpen(true)}
           className="w-full h-full"
