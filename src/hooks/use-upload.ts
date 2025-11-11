@@ -2,17 +2,10 @@
 
 import { upload } from '@vercel/blob/client';
 import { useState, useCallback } from 'react';
+import { type UploadProgress, type UploadResult } from '@/lib/upload-schema';
 
-export interface UploadProgress {
-  progress: number; // 0-100
-  isUploading: boolean;
-}
-
-export interface UploadResult {
-  url: string;
-  pathname: string;
-  contentType: string;
-}
+// Re-export types for convenience
+export type { UploadProgress, UploadResult };
 
 export function useUpload() {
   const [uploadProgress, setUploadProgress] = useState<Map<string, UploadProgress>>(new Map());
@@ -48,6 +41,7 @@ export function useUpload() {
         return next;
       });
 
+      // Return blob URL directly - no need to wait for DB or do lookups
       return {
         url: blob.url,
         pathname: blob.pathname,

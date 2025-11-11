@@ -1,30 +1,13 @@
-import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
-import { getEchoToken } from '@/server/auth';
+import { getGoogleClient, extractImageFromResponse } from '@/server/ai/google';
 import { uploadGeneratedImage } from '@/lib/blob-upload';
 
 // Zod schema for generate image request
 export const generateImageSchema = z.object({
     prompt: z.string().min(1, "Prompt cannot be empty"),
-    images: z.array(z.string().uuid("Invalid upload ID")).optional().default([]),
 });
 
 export type GenerateImageInput = z.infer<typeof generateImageSchema>;
-
-async function getGoogleClient(): Promise<GoogleGenAI> {
-    const token = await getEchoToken();
-
-    if (!token) {
-        throw new Error("No Echo token available. User may not be authenticated.");
-    }
-
-    return new GoogleGenAI({
-        apiKey: token,
-        httpOptions: {
-            baseUrl: 'https://echo.router.merit.systems',
-        }
-    });
-}
 
 export async function generateImage(input: GenerateImageInput): Promise<{ id: string; url: string }> {
     const google = await getGoogleClient();
@@ -34,22 +17,7 @@ export async function generateImage(input: GenerateImageInput): Promise<{ id: st
         contents: input.prompt,
     });
 
-    if (!response.candidates?.[0]?.content?.parts) {
-        throw new Error("No response from Google AI");
-    }
-
-    // Extract image data from response
-    let imageBuffer: Buffer | null = null;
-    for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData?.data) {
-            imageBuffer = Buffer.from(part.inlineData.data, "base64");
-            break;
-        }
-    }
-
-    if (!imageBuffer) {
-        throw new Error("No image data returned from Google AI");
-    }
+    const imageBuffer = extractImageFromResponse(response);
 
     // Upload to Vercel Blob storage and get UUID + URL
     const result = await uploadGeneratedImage(imageBuffer, 'image/png');
