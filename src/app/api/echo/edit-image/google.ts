@@ -1,6 +1,7 @@
 import { getGoogleClient, extractImageFromResponse } from '@/server/ai/google';
 import { uploadGeneratedImage } from '@/lib/blob-upload';
 import { db } from '@/server/db';
+import type { Prisma } from '@/../../generated/prisma';
 import type { EditImageInput } from '@/lib/generation-schema';
 
 export async function editImage(input: EditImageInput, userId: string): Promise<{ id: string; url: string }> {
@@ -42,16 +43,19 @@ export async function editImage(input: EditImageInput, userId: string): Promise<
     const imageBuffer = extractImageFromResponse(response);
 
     // Upload to Vercel Blob storage and get UUID + URL
-    const result = await uploadGeneratedImage(imageBuffer, 'image/png');
+    const uploadResult = await uploadGeneratedImage(imageBuffer, 'image/png');
 
-    // Save to Outputs table
-    await db.output.create({
+    // Save to Outputs table and get database ID
+    const output = await db.output.create({
         data: {
             userId,
-            input: input as any, // Prisma Json type
-            outputUrl: result.url,
+            input: input as Prisma.InputJsonValue,
+            outputUrl: uploadResult.url,
         },
     });
 
-    return result;
+    return {
+        id: output.id, // Return database cuid, not blob UUID
+        url: uploadResult.url,
+    };
 }

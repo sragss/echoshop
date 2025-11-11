@@ -4,13 +4,12 @@ import { AuthDialog } from '@/components/auth-dialog';
 import { Designer } from '@/components/designer';
 import { Gallery } from '@/components/gallery';
 import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
-import { modelCategories } from '@/config/models';
+import { GalleryProvider } from '@/contexts/gallery-context';
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 
 function HomeContent() {
-  const [selectedModel, setSelectedModel] = useState(modelCategories[0]?.models[0]?.id ?? "nano-banana");
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const { data: session } = useSession();
 
@@ -30,12 +29,7 @@ function HomeContent() {
       </header>
 
       <main className="flex flex-1 flex-col items-center px-4 py-8">
-          <Designer
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            onAuthRequired={() => setShowAuthDialog(true)}
-          />
-
+        <Designer onAuthRequired={() => setShowAuthDialog(true)} />
         {session?.user && <Gallery />}
       </main>
 
@@ -47,7 +41,9 @@ function HomeContent() {
 export default function Home() {
   return (
     <PromptInputProvider>
-      <HomeContent />
+      <GalleryProvider>
+        <HomeContent />
+      </GalleryProvider>
     </PromptInputProvider>
   );
 }

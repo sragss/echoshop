@@ -24,3 +24,6 @@ export type BaseGeneration = z.infer<typeof baseGenerationSchema>;
 export type GenerateImageInput = z.infer<typeof generateImageSchema>;
 export type EditImageInput = z.infer<typeof editImageSchema>;
 export type GenerationInput = GenerateImageInput | EditImageInput;
+
+// Type for Output.input JSON field - used in gallery display
+export type OutputMetadata = GenerationInput;
