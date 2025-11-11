@@ -6,21 +6,22 @@ export type ModelCategory = {
 export type Model = {
   id: string;
   name: string;
+  provider: string; // Logo provider slug for ModelSelectorLogo
 };
 
 export const modelCategories: ModelCategory[] = [
   {
     name: "Image",
     models: [
-      { id: "nano-banana", name: "Nano-Banana" },
-      { id: "gpt-image-1", name: "GPT-Image-1" },
+      { id: "nano-banana", name: "Nano-Banana", provider: "google" },
+      { id: "gpt-image-1", name: "GPT-Image-1", provider: "openai" },
     ],
   },
   {
     name: "Video",
     models: [
-      { id: "sora2", name: "Sora2" },
-      { id: "veo3", name: "Veo3" },
+      { id: "sora2", name: "Sora2", provider: "openai" },
+      { id: "veo3", name: "Veo3", provider: "google" },
     ],
   },
 ];

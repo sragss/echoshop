@@ -8,14 +8,22 @@ import {
   PromptInputTextarea,
   PromptInputSubmit,
   PromptInputTools,
-  PromptInputSelect,
-  PromptInputSelectTrigger,
-  PromptInputSelectValue,
-  PromptInputSelectContent,
-  PromptInputSelectItem,
+  PromptInputButton,
   type PromptInputMessage,
   usePromptInputAttachments,
 } from '@/components/ai-elements/prompt-input';
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorInput,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorLogo,
+  ModelSelectorName,
+  ModelSelectorTrigger,
+} from '@/components/ai-elements/model-selector';
 import { Button } from '@/components/ui/button';
 import {
   HoverCard,
@@ -23,8 +31,8 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { modelCategories } from '@/config/models';
-import { XIcon, PlusIcon } from 'lucide-react';
-import { useEffect, useRef, type RefObject } from 'react';
+import { XIcon, PlusIcon, CheckIcon } from 'lucide-react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { FileUIPart } from 'ai';
 import type { UploadProgress } from '@/hooks/use-upload';
 
@@ -160,15 +168,12 @@ function FileDialogButton() {
   const attachments = usePromptInputAttachments();
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
+    <PromptInputButton
       onClick={() => attachments.openFileDialog()}
       aria-label="Add files"
     >
       <PlusIcon className="size-4" />
-    </Button>
+    </PromptInputButton>
   );
 }
 
@@ -181,15 +186,17 @@ export function PromptBox({
   uploadProgress,
   isUploading,
 }: PromptBoxProps) {
-  // Get the selected model name for display
-  const selectedModelName = modelCategories
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
+
+  // Get the selected model data for display
+  const selectedModelData = modelCategories
     .flatMap(cat => cat.models)
-    .find(m => m.id === selectedModel)?.name;
+    .find(m => m.id === selectedModel);
 
   return (
     <PromptInput onSubmit={onSubmit} accept="image/*" globalDrop multiple>
       <AttachmentWatcher onFilesAdded={onFilesAdded} />
-      <PromptInputAttachments className="justify-start items-start w-full">
+      <PromptInputAttachments className="w-full">
         {(attachment) => (
           <CustomAttachment
             data={attachment}
@@ -206,30 +213,40 @@ export function PromptBox({
       <PromptInputFooter>
         <PromptInputTools>
           <FileDialogButton />
-          <PromptInputSelect
-            value={selectedModel}
-            onValueChange={onModelChange}
-          >
-            <PromptInputSelectTrigger>
-              <PromptInputSelectValue>
-                {selectedModelName}
-              </PromptInputSelectValue>
-            </PromptInputSelectTrigger>
-            <PromptInputSelectContent>
-              {modelCategories.map((category) => (
-                <div key={category.name}>
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                    {category.name}
-                  </div>
-                  {category.models.map((model) => (
-                    <PromptInputSelectItem key={model.id} value={model.id}>
-                      {model.name}
-                    </PromptInputSelectItem>
-                  ))}
-                </div>
-              ))}
-            </PromptInputSelectContent>
-          </PromptInputSelect>
+          <ModelSelector open={modelSelectorOpen} onOpenChange={setModelSelectorOpen}>
+            <ModelSelectorTrigger asChild>
+              <PromptInputButton>
+                {selectedModelData?.provider && (
+                  <ModelSelectorLogo provider={selectedModelData.provider} />
+                )}
+                <ModelSelectorName>{selectedModelData?.name}</ModelSelectorName>
+              </PromptInputButton>
+            </ModelSelectorTrigger>
+            <ModelSelectorContent>
+              <ModelSelectorInput placeholder="Search models..." />
+              <ModelSelectorList>
+                <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                {modelCategories.map((category) => (
+                  <ModelSelectorGroup key={category.name} heading={category.name}>
+                    {category.models.map((model) => (
+                      <ModelSelectorItem
+                        key={model.id}
+                        value={model.id}
+                        onSelect={() => {
+                          onModelChange(model.id);
+                          setModelSelectorOpen(false);
+                        }}
+                      >
+                        <ModelSelectorLogo provider={model.provider} />
+                        <ModelSelectorName>{model.name}</ModelSelectorName>
+                        {selectedModel === model.id && <CheckIcon className="ml-auto size-4" />}
+                      </ModelSelectorItem>
+                    ))}
+                  </ModelSelectorGroup>
+                ))}
+              </ModelSelectorList>
+            </ModelSelectorContent>
+          </ModelSelector>
         </PromptInputTools>
         <PromptInputSubmit disabled={isUploading} />
       </PromptInputFooter>
