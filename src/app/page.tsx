@@ -1,69 +1,71 @@
-import Link from "next/link";
+"use client";
 
-import { LatestPost } from "~/app/_components/post";
-import { auth } from "~/server/auth";
-import { api, HydrateClient } from "~/trpc/server";
+import { PromptBox } from '@/components/prompt-box';
+import { AuthDialog } from '@/components/auth-dialog';
+import type { PromptInputMessage } from '@/components/ai-elements/prompt-input';
+import { modelCategories } from '@/config/models';
+import { useState, useRef } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
-  const session = await auth();
+export default function Home() {
+  const [text, setText] = useState("");
+  const [selectedModel, setSelectedModel] = useState(modelCategories[0]?.models[0]?.id ?? "nano-banana");
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { data: session } = useSession();
 
-  if (session?.user) {
-    void api.post.getLatest.prefetch();
-  }
+  const handleSubmit = (message: PromptInputMessage) => {
+    const hasText = Boolean(message.text);
+    const hasFiles = Boolean(message.files?.length);
+
+    if (!(hasText || hasFiles)) {
+      return;
+    }
+
+    // Check if user is authenticated
+    if (!session?.user) {
+      setShowAuthDialog(true);
+      return;
+    }
+
+    console.log("Submitted:", {
+      text: message.text,
+      model: selectedModel,
+      files: message.files?.length || 0,
+    });
+    setText("");
+  };
 
   return (
-    <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
+    <div className="flex min-h-screen flex-col bg-white">
+      <header className="border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-4xl px-4 py-6 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+            EchoShop
           </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
+          {session?.user && (
+            <Button variant="outline" onClick={() => signOut()}>
+              Sign out
+            </Button>
+          )}
+        </div>
+      </header>
 
-            <div className="flex flex-col items-center justify-center gap-4">
-              <p className="text-center text-2xl text-white">
-                {session && <span>Logged in as {session.user?.name}</span>}
-              </p>
-              <Link
-                href={session ? "/api/auth/signout" : "/api/auth/signin"}
-                className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-              >
-                {session ? "Sign out" : "Sign in"}
-              </Link>
-            </div>
-          </div>
-
-          {session?.user && <LatestPost />}
+      <main className="flex flex-1 items-center justify-center px-4">
+        <div className="w-full max-w-2xl">
+          <PromptBox
+            text={text}
+            onTextChange={setText}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            onSubmit={handleSubmit}
+            textareaRef={textareaRef}
+          />
         </div>
       </main>
-    </HydrateClient>
+
+      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
+    </div>
   );
 }
