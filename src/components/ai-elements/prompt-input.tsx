@@ -77,6 +77,7 @@ import {
 export type AttachmentsContext = {
   files: (FileUIPart & { id: string })[];
   add: (files: File[] | FileList) => void;
+  addPreUploaded: (id: string, url: string, mediaType?: string, filename?: string) => void;
   remove: (id: string) => void;
   clear: () => void;
   openFileDialog: () => void;
@@ -177,6 +178,18 @@ export function PromptInputProvider({
     );
   }, []);
 
+  const addPreUploaded = useCallback((id: string, url: string, mediaType?: string, filename?: string) => {
+    setAttachements((prev) =>
+      prev.concat([{
+        id,
+        type: "file" as const,
+        url,
+        mediaType: mediaType ?? "image/jpeg",
+        filename: filename ?? "image.jpg",
+      }])
+    );
+  }, []);
+
   const remove = useCallback((id: string) => {
     setAttachements((prev) => {
       const found = prev.find((f) => f.id === id);
@@ -206,12 +219,13 @@ export function PromptInputProvider({
     () => ({
       files: attachements,
       add,
+      addPreUploaded,
       remove,
       clear,
       openFileDialog,
       fileInputRef,
     }),
-    [attachements, add, remove, clear, openFileDialog]
+    [attachements, add, addPreUploaded, remove, clear, openFileDialog]
   );
 
   const __registerFileInput = useCallback(
@@ -551,6 +565,23 @@ export const PromptInput = ({
     ? (files: File[] | FileList) => controller.attachments.add(files)
     : addLocal;
 
+  const addPreUploadedLocal = useCallback((id: string, url: string, mediaType?: string, filename?: string) => {
+    setItems((prev) =>
+      prev.concat([{
+        id,
+        type: "file" as const,
+        url,
+        mediaType: mediaType ?? "image/jpeg",
+        filename: filename ?? "image.jpg",
+      }])
+    );
+  }, []);
+
+  const addPreUploaded = usingProvider
+    ? (id: string, url: string, mediaType?: string, filename?: string) =>
+        controller.attachments.addPreUploaded(id, url, mediaType, filename)
+    : addPreUploadedLocal;
+
   const remove = usingProvider
     ? (id: string) => controller.attachments.remove(id)
     : (id: string) =>
@@ -674,12 +705,13 @@ export const PromptInput = ({
     () => ({
       files: files.map((item) => ({ ...item, id: item.id })),
       add,
+      addPreUploaded,
       remove,
       clear,
       openFileDialog,
       fileInputRef: inputRef,
     }),
-    [files, add, remove, clear, openFileDialog]
+    [files, add, addPreUploaded, remove, clear, openFileDialog]
   );
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
@@ -711,31 +743,7 @@ export const PromptInput = ({
         return item;
       })
     ).then((convertedFiles: FileUIPart[]) => {
-      try {
-        const result = onSubmit({ text, files: convertedFiles }, event);
-
-        // Handle both sync and async onSubmit
-        if (result instanceof Promise) {
-          result
-            .then(() => {
-              clear();
-              if (usingProvider) {
-                controller.textInput.clear();
-              }
-            })
-            .catch(() => {
-              // Don't clear on error - user may want to retry
-            });
-        } else {
-          // Sync function completed without throwing, clear attachments
-          clear();
-          if (usingProvider) {
-            controller.textInput.clear();
-          }
-        }
-      } catch {
-        // Don't clear on error - user may want to retry
-      }
+      void onSubmit({ text, files: convertedFiles }, event);
     });
   };
 

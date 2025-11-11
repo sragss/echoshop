@@ -6,7 +6,7 @@ import { Gallery } from '@/components/gallery';
 import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
 import { GalleryProvider } from '@/contexts/gallery-context';
 import { useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut, signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 
 function HomeContent() {
@@ -20,9 +20,13 @@ function HomeContent() {
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
             EchoShop
           </h1>
-          {session?.user && (
+          {session?.user ? (
             <Button variant="outline" onClick={() => signOut()}>
               Sign out
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => signIn("echo")}>
+              Sign in
             </Button>
           )}
         </div>

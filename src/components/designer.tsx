@@ -59,6 +59,17 @@ export function Designer({ onAuthRequired }: DesignerProps) {
         continue;
       }
 
+      // Check if this is a pre-uploaded Vercel Blob URL (starts with https://)
+      // If so, skip upload and use it directly
+      if (fileData.url.startsWith('https://')) {
+        setUploadedFiles((prev) => {
+          const next = new Map(prev);
+          next.set(fileData.id, fileData.url);
+          return next;
+        });
+        continue;
+      }
+
       try {
         // Convert blob URL back to File object for upload
         const response = await fetch(fileData.url);
@@ -153,10 +164,6 @@ export function Designer({ onAuthRequired }: DesignerProps) {
 
       // 3. Add to generated (context will invalidate tRPC)
       void addGenerated(clientId, result.id);
-
-      // Clear state
-      setUploadedFiles(new Map());
-      controller.attachments.clear();
     } catch (error) {
       console.error("Image operation error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to process image";
@@ -164,6 +171,10 @@ export function Designer({ onAuthRequired }: DesignerProps) {
       // Add to error state
       addError(clientId, errorMessage);
     }
+  };
+
+  const handleClear = () => {
+    setUploadedFiles(new Map());
   };
 
   return (
@@ -176,6 +187,7 @@ export function Designer({ onAuthRequired }: DesignerProps) {
         onFilesAdded={handleFilesAdded}
         uploadProgress={uploadProgress}
         isUploading={isAnyUploading}
+        onClear={handleClear}
       />
     </div>
   );

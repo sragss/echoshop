@@ -7,11 +7,7 @@ export function Gallery() {
   const { items, isLoading } = useGallery();
 
   if (isLoading && items.length === 0) {
-    return (
-      <div className="w-full max-w-2xl mx-auto py-8">
-        <div className="text-gray-500">Loading...</div>
-      </div>
-    );
+    return null;
   }
 
   if (items.length === 0) {

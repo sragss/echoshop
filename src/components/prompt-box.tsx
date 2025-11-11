@@ -11,6 +11,7 @@ import {
   PromptInputButton,
   type PromptInputMessage,
   usePromptInputAttachments,
+  usePromptInputController,
 } from '@/components/ai-elements/prompt-input';
 import {
   ModelSelector,
@@ -141,6 +142,7 @@ interface PromptBoxProps {
   onFilesAdded?: (files: (FileUIPart & { id: string })[]) => void;
   uploadProgress?: Map<string, UploadProgress>;
   isUploading?: boolean;
+  onClear?: () => void;
 }
 
 // Component to watch for new attachments and trigger callback
@@ -179,6 +181,23 @@ function FileDialogButton() {
   );
 }
 
+// Component to clear attachments and text
+function ClearButton({ onClear }: { onClear: () => void }) {
+  const controller = usePromptInputController();
+  const hasContent = controller.textInput.value || controller.attachments.files.length > 0;
+
+  return (
+    <PromptInputButton
+      onClick={onClear}
+      aria-label="Clear"
+      variant="ghost"
+      disabled={!hasContent}
+    >
+      <XIcon className="size-4" />
+    </PromptInputButton>
+  );
+}
+
 export function PromptBox({
   selectedModel,
   onModelChange,
@@ -187,13 +206,21 @@ export function PromptBox({
   onFilesAdded,
   uploadProgress,
   isUploading,
+  onClear,
 }: PromptBoxProps) {
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
+  const controller = usePromptInputController();
 
   // Get the selected model data for display
   const selectedModelData = modelCategories
     .flatMap(cat => cat.models)
     .find(m => m.id === selectedModel);
+
+  const handleClear = () => {
+    controller.textInput.clear();
+    controller.attachments.clear();
+    onClear?.();
+  };
 
   return (
     <PromptInput onSubmit={onSubmit} accept="image/*" globalDrop multiple>
@@ -250,7 +277,10 @@ export function PromptBox({
             </ModelSelectorContent>
           </ModelSelector>
         </PromptInputTools>
-        <PromptInputSubmit disabled={isUploading} />
+        <div className="flex items-center gap-1">
+          <ClearButton onClear={handleClear} />
+          <PromptInputSubmit disabled={isUploading} />
+        </div>
       </PromptInputFooter>
     </PromptInput>
   );

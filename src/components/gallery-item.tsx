@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { XCircle, Copy, Plus } from "lucide-react";
+import { nanoid } from "nanoid";
 import type { GalleryItemData } from "@/types/generation";
 import type { OutputMetadata } from "@/lib/generation-schema";
 import { useGallery } from "@/contexts/gallery-context";
+import { usePromptInputAttachments } from "@/components/ai-elements/prompt-input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -39,6 +41,7 @@ function LoadingTimer({ startTime }: { startTime: Date }) {
  */
 export function GalleryItem({ data }: { data: GalleryItemData }) {
   const { removeGenerating } = useGallery();
+  const attachments = usePromptInputAttachments();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   if (data.type === "loading") {
@@ -99,6 +102,12 @@ export function GalleryItem({ data }: { data: GalleryItemData }) {
     }
   };
 
+  const handleAddToPrompt = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const id = nanoid();
+    attachments.addPreUploaded(id, output.outputUrl, "image/jpeg", "gallery-image.jpg");
+  };
+
   return (
     <>
       <div className="aspect-square relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm group cursor-pointer">
@@ -116,8 +125,8 @@ export function GalleryItem({ data }: { data: GalleryItemData }) {
         </button>
 
         {/* Hover actions */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200 pointer-events-none" />
-        <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-200 pointer-events-none" />
+        <div className="absolute bottom-2 right-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
           <Button
             onClick={handleCopy}
             size="icon-sm"
@@ -128,11 +137,11 @@ export function GalleryItem({ data }: { data: GalleryItemData }) {
             <Copy />
           </Button>
           <Button
+            onClick={handleAddToPrompt}
             size="icon-sm"
             variant="outline"
             className="pointer-events-auto shadow-lg"
-            title="Add to prompt (coming soon)"
-            disabled
+            title="Add to prompt"
           >
             <Plus />
           </Button>
