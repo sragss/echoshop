@@ -11,6 +11,7 @@ This is a T3 Stack application built with Next.js 15, featuring a modern full-st
 - tRPC for type-safe API routes
 - Prisma ORM with PostgreSQL
 - NextAuth.js v5 (beta) for authentication with Echo provider
+- Vercel Blob for file storage
 - Tailwind CSS v4
 - React 19
 - TypeScript

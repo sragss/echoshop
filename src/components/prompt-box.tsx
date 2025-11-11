@@ -23,15 +23,24 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { modelCategories } from '@/config/models';
-import { XIcon } from 'lucide-react';
-import type { RefObject } from 'react';
+import { XIcon, PlusIcon } from 'lucide-react';
+import { useEffect, useRef, type RefObject } from 'react';
 import type { FileUIPart } from 'ai';
+import type { UploadProgress } from '@/hooks/use-upload';
 
 // Custom attachment component - square icon without text, left-aligned
-function CustomAttachment({ data }: { data: FileUIPart & { id: string } }) {
+function CustomAttachment({
+  data,
+  uploadProgress
+}: {
+  data: FileUIPart & { id: string };
+  uploadProgress?: { progress: number; isUploading: boolean };
+}) {
   const attachments = usePromptInputAttachments();
   const isImage = data.mediaType?.startsWith("image/") && data.url;
   const filename = data.filename || "";
+  const isUploading = uploadProgress?.isUploading ?? false;
+  const progress = uploadProgress?.progress ?? 0;
 
   return (
     <HoverCard>
@@ -50,6 +59,39 @@ function CustomAttachment({ data }: { data: FileUIPart & { id: string } }) {
               </div>
             )}
           </div>
+
+          {/* Upload progress overlay */}
+          {isUploading && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-black/50">
+              <div className="relative flex size-10 items-center justify-center">
+                {/* Progress circle */}
+                <svg className="size-10 -rotate-90" viewBox="0 0 36 36">
+                  <circle
+                    className="stroke-white/20"
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    strokeWidth="2"
+                  />
+                  <circle
+                    className="stroke-white transition-all duration-300"
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    strokeWidth="2"
+                    strokeDasharray={`${(progress / 100) * 100}, 100`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="absolute text-xs font-semibold text-white">
+                  {progress}%
+                </span>
+              </div>
+            </div>
+          )}
+
           <Button
             aria-label="Remove attachment"
             className="absolute -right-2 -top-2 size-6 rounded-full bg-black p-0 opacity-0 shadow-md transition-opacity hover:bg-black/80 group-hover:opacity-100"
@@ -59,6 +101,7 @@ function CustomAttachment({ data }: { data: FileUIPart & { id: string } }) {
             }}
             size="icon"
             type="button"
+            disabled={isUploading}
           >
             <XIcon className="size-3 text-white" />
             <span className="sr-only">Remove</span>
@@ -81,21 +124,62 @@ function CustomAttachment({ data }: { data: FileUIPart & { id: string } }) {
 }
 
 interface PromptBoxProps {
-  text: string;
-  onTextChange: (text: string) => void;
   selectedModel: string;
   onModelChange: (model: string) => void;
   onSubmit: (message: PromptInputMessage) => void;
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
+  onFilesAdded?: (files: (FileUIPart & { id: string })[]) => void;
+  uploadProgress?: Map<string, UploadProgress>;
+  isUploading?: boolean;
+}
+
+// Component to watch for new attachments and trigger callback
+function AttachmentWatcher({ onFilesAdded }: { onFilesAdded?: (files: (FileUIPart & { id: string })[]) => void }) {
+  const attachments = usePromptInputAttachments();
+  const prevIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const currentIds = new Set(attachments.files.map(f => f.id));
+    const prevIds = prevIdsRef.current;
+
+    // Find newly added files
+    const newFiles = attachments.files.filter(f => !prevIds.has(f.id));
+
+    if (newFiles.length > 0 && onFilesAdded) {
+      onFilesAdded(newFiles);
+    }
+
+    prevIdsRef.current = currentIds;
+  }, [attachments.files, onFilesAdded]);
+
+  return null;
+}
+
+// Component to access file dialog
+function FileDialogButton() {
+  const attachments = usePromptInputAttachments();
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      onClick={() => attachments.openFileDialog()}
+      aria-label="Add files"
+    >
+      <PlusIcon className="size-4" />
+    </Button>
+  );
 }
 
 export function PromptBox({
-  text,
-  onTextChange,
   selectedModel,
   onModelChange,
   onSubmit,
   textareaRef,
+  onFilesAdded,
+  uploadProgress,
+  isUploading,
 }: PromptBoxProps) {
   // Get the selected model name for display
   const selectedModelName = modelCategories
@@ -104,19 +188,24 @@ export function PromptBox({
 
   return (
     <PromptInput onSubmit={onSubmit} accept="image/*" globalDrop multiple>
+      <AttachmentWatcher onFilesAdded={onFilesAdded} />
       <PromptInputAttachments className="justify-start items-start w-full">
-        {(attachment) => <CustomAttachment data={attachment} />}
+        {(attachment) => (
+          <CustomAttachment
+            data={attachment}
+            uploadProgress={uploadProgress?.get(attachment.id)}
+          />
+        )}
       </PromptInputAttachments>
       <PromptInputBody>
         <PromptInputTextarea
-          onChange={(e) => onTextChange(e.target.value)}
           ref={textareaRef}
-          value={text}
           placeholder="Type your message..."
         />
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
+          <FileDialogButton />
           <PromptInputSelect
             value={selectedModel}
             onValueChange={onModelChange}
@@ -142,7 +231,7 @@ export function PromptBox({
             </PromptInputSelectContent>
           </PromptInputSelect>
         </PromptInputTools>
-        <PromptInputSubmit disabled={!text} />
+        <PromptInputSubmit disabled={isUploading} />
       </PromptInputFooter>
     </PromptInput>
   );

@@ -64,6 +64,7 @@ model User {
     accounts      Account[]
     sessions      Session[]
     posts         Post[]
+    uploads       Upload[]
 }
 
 model VerificationToken {
@@ -72,4 +73,17 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+model Upload {
+    id        String   @id @default(cuid())
+    blobUrl   String
+    filename  String
+    mediaType String
+    size      Int
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+
+    @@index([userId])
 }
