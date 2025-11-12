@@ -74,7 +74,7 @@ export async function getEchoToken(): Promise<string | null> {
     // Refresh the token
     const tokenData = await refreshEchoToken(account.refresh_token);
 
-    // Update the database with new token
+    // Update the database with new token and refresh token (if provided)
     const newExpiresAt = Math.floor(Date.now() / 1000) + tokenData.expires_in;
 
     await db.account.update({
@@ -82,6 +82,8 @@ export async function getEchoToken(): Promise<string | null> {
       data: {
         access_token: tokenData.access_token,
         expires_at: newExpiresAt,
+        // Update refresh token if Echo provides a new one (token rotation)
+        ...(tokenData.refresh_token && { refresh_token: tokenData.refresh_token }),
       },
     });
 
