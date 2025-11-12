@@ -11,6 +11,7 @@ import { useUpload } from '@/hooks/use-upload';
 import { useGallery } from "@/contexts/gallery-context";
 import { modelCategories } from '@/config/models';
 import { toast } from "sonner";
+import { api } from "@/trpc/react";
 
 interface DesignerProps {
   onAuthRequired: () => void;
@@ -24,6 +25,9 @@ export function Designer({ onAuthRequired }: DesignerProps) {
   const { uploadFile, uploadProgress, isAnyUploading } = useUpload();
   const controller = usePromptInputController();
   const { addGenerating, addGenerated, addError } = useGallery();
+
+  const generateMutation = api.image.generate.useMutation();
+  const editMutation = api.image.edit.useMutation();
 
   // Handle newly added files
   const handleFilesAdded = async (newFiles: Array<{ id: string; url: string; filename?: string; mediaType?: string }>) => {
@@ -126,9 +130,8 @@ export function Designer({ onAuthRequired }: DesignerProps) {
       .map((id) => uploadedFiles.get(id))
       .filter((url): url is string => Boolean(url));
 
-    // Determine which endpoint to use
+    // Determine which operation to use
     const isEdit = imageUrls.length > 0;
-    const endpoint = isEdit ? "/api/echo/edit-image" : "/api/echo/generate-image";
     const operation = isEdit ? "edit" : "generate";
 
     // 1. Generate client ID and add to generating
@@ -143,24 +146,19 @@ export function Designer({ onAuthRequired }: DesignerProps) {
     });
 
     try {
-      // 2. Call API and await response
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: message.text,
-          ...(isEdit && { images: imageUrls }),
-        }),
-      });
-
-      if (!response.ok) {
-        const error: { error?: string } = await response.json() as { error?: string };
-        throw new Error(error.error ?? "Image operation failed");
-      }
-
-      const result = await response.json() as { id: string; url: string };
+      // 2. Call tRPC mutation
+      const result = isEdit
+        ? await editMutation.mutateAsync({
+            model: selectedModel,
+            operation: "edit",
+            prompt: message.text || "",
+            images: imageUrls,
+          })
+        : await generateMutation.mutateAsync({
+            model: selectedModel,
+            operation: "generate",
+            prompt: message.text || "",
+          });
 
       // 3. Add to generated (context will invalidate tRPC)
       void addGenerated(clientId, result.id);
