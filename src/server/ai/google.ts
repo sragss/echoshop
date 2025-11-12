@@ -1,10 +1,11 @@
 import { GoogleGenAI } from '@google/genai';
 import { getEchoToken } from '@/server/auth';
+import { fetchBlobAsResponse } from './image-helpers';
 
 /**
  * Get a Google AI client configured with Echo authentication
  */
-export async function getGoogleClient(): Promise<GoogleGenAI> {
+async function getGoogleClient(): Promise<GoogleGenAI> {
     const token = await getEchoToken();
 
     if (!token) {
@@ -22,7 +23,7 @@ export async function getGoogleClient(): Promise<GoogleGenAI> {
 /**
  * Extract image buffer from Google AI response
  */
-export function extractImageFromResponse(response: Awaited<ReturnType<GoogleGenAI['models']['generateContent']>>): Buffer {
+function extractImageFromResponse(response: Awaited<ReturnType<GoogleGenAI['models']['generateContent']>>): Buffer {
     if (!response.candidates?.[0]?.content?.parts) {
         throw new Error("No response from Google AI");
     }
@@ -34,4 +35,55 @@ export function extractImageFromResponse(response: Awaited<ReturnType<GoogleGenA
     }
 
     throw new Error("No image data returned from Google AI");
+}
+
+/**
+ * Generate an image using Google's Gemini model
+ */
+export async function generateGoogleImage(prompt: string): Promise<Buffer> {
+    const google = await getGoogleClient();
+
+    const response = await google.models.generateContent({
+        model: "gemini-2.5-flash-image-preview",
+        contents: prompt,
+    });
+
+    return extractImageFromResponse(response);
+}
+
+/**
+ * Edit images using Google's Gemini model
+ */
+export async function editGoogleImage(prompt: string, imageUrls: string[]): Promise<Buffer> {
+    const google = await getGoogleClient();
+
+    // Fetch images and convert to Google's format
+    const imageData = await Promise.all(
+        imageUrls.map(async (url) => {
+            const response = await fetchBlobAsResponse(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const base64Image = Buffer.from(arrayBuffer).toString('base64');
+            const contentType = response.headers.get('content-type') || 'image/png';
+
+            return {
+                inlineData: {
+                    mimeType: contentType,
+                    data: base64Image,
+                },
+            };
+        })
+    );
+
+    // Build contents with text and images
+    const contents = [
+        { text: prompt },
+        ...imageData,
+    ];
+
+    const response = await google.models.generateContent({
+        model: "gemini-2.5-flash-image-preview",
+        contents,
+    });
+
+    return extractImageFromResponse(response);
 }

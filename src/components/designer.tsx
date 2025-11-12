@@ -19,7 +19,7 @@ interface DesignerProps {
 
 export function Designer({ onAuthRequired }: DesignerProps) {
   const [uploadedFiles, setUploadedFiles] = useState<Map<string, string>>(new Map());
-  const [selectedModel, setSelectedModel] = useState(modelCategories[0]?.models[0]?.id ?? "nano-banana");
+  const [selectedModel, setSelectedModel] = useState<"nano-banana" | "gpt-image-1">(modelCategories[0]?.models[0]?.id as "nano-banana" | "gpt-image-1" ?? "nano-banana");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { data: session } = useSession();
   const { uploadFile, uploadProgress, isAnyUploading } = useUpload();
@@ -118,12 +118,6 @@ export function Designer({ onAuthRequired }: DesignerProps) {
       return;
     }
 
-    // Only support nano-banana for now
-    if (selectedModel !== "nano-banana") {
-      toast.error("Only nano-banana model is supported at this time");
-      return;
-    }
-
     // Get uploaded blob URLs from the attachments controller
     const attachmentIds = controller.attachments.files.map((f) => f.id);
     const imageUrls = attachmentIds
@@ -171,6 +165,12 @@ export function Designer({ onAuthRequired }: DesignerProps) {
     }
   };
 
+  const handleModelChange = (model: string) => {
+    if (model === "nano-banana" || model === "gpt-image-1") {
+      setSelectedModel(model);
+    }
+  };
+
   const handleClear = () => {
     setUploadedFiles(new Map());
   };
@@ -179,7 +179,7 @@ export function Designer({ onAuthRequired }: DesignerProps) {
     <div className="w-full max-w-2xl">
       <PromptBox
         selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
+        onModelChange={handleModelChange}
         onSubmit={handleSubmit}
         textareaRef={textareaRef}
         onFilesAdded={handleFilesAdded}

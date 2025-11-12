@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { api } from "@/trpc/react";
+import { useSession } from "next-auth/react";
 import type { GeneratingItem, GeneratedItem, GalleryItemData } from "@/types/generation";
 
 interface ErrorItem {
@@ -27,9 +28,10 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   const [generating, setGenerating] = useState<GeneratingItem[]>([]);
   const [generated, setGenerated] = useState<GeneratedItem[]>([]);
   const [errors, setErrors] = useState<ErrorItem[]>([]);
+  const { data: session } = useSession();
   const utils = api.useUtils();
 
-  // Subscribe to loaded outputs from tRPC with pagination
+  // Subscribe to loaded outputs from tRPC with pagination - only if authenticated
   const {
     data,
     isLoading,
@@ -40,6 +42,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
     { limit: 20 },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
+      enabled: !!session?.user, // Only fetch if user is authenticated
     }
   );
 

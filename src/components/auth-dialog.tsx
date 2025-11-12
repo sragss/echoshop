@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 interface AuthDialogProps {
   open: boolean;
@@ -30,6 +31,13 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <Button onClick={handleSignIn} className="w-full">
+          <Image
+            src="/logo/dark.svg"
+            alt="Echo"
+            width={20}
+            height={20}
+            className="mr-2"
+          />
           Sign in with Echo
         </Button>
       </DialogContent>

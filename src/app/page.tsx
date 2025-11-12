@@ -8,6 +8,7 @@ import { GalleryProvider } from '@/contexts/gallery-context';
 import { useState } from "react";
 import { useSession, signOut, signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 function HomeContent() {
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -22,10 +23,24 @@ function HomeContent() {
           </h1>
           {session?.user ? (
             <Button variant="outline" onClick={() => signOut()}>
+              <Image
+                src="/logo/light.svg"
+                alt="Echo"
+                width={20}
+                height={20}
+                className="mr-2"
+              />
               Sign out
             </Button>
           ) : (
             <Button variant="outline" onClick={() => signIn("echo")}>
+              <Image
+                src="/logo/light.svg"
+                alt="Echo"
+                width={20}
+                height={20}
+                className="mr-2"
+              />
               Sign in
             </Button>
           )}
