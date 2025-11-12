@@ -19,15 +19,23 @@ interface DesignerProps {
 
 export function Designer({ onAuthRequired }: DesignerProps) {
   const [uploadedFiles, setUploadedFiles] = useState<Map<string, string>>(new Map());
-  const [selectedModel, setSelectedModel] = useState<"nano-banana" | "gpt-image-1">(modelCategories[0]?.models[0]?.id as "nano-banana" | "gpt-image-1" ?? "nano-banana");
+  const [selectedModel, setSelectedModel] = useState<string>(modelCategories[0]?.models[0]?.id ?? "nano-banana");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { data: session } = useSession();
   const { uploadFile, uploadProgress, isAnyUploading } = useUpload();
   const controller = usePromptInputController();
-  const { addGenerating, addGenerated, addError } = useGallery();
+  const {
+    addGenerating,
+    addGenerated,
+    addError,
+    addGeneratingVideo,
+    startPollingVideo,
+    addVideoError,
+  } = useGallery();
 
   const generateMutation = api.image.generate.useMutation();
   const editMutation = api.image.edit.useMutation();
+  const createVideoMutation = api.video.create.useMutation();
 
   // Handle newly added files
   const handleFilesAdded = async (newFiles: Array<{ id: string; url: string; filename?: string; mediaType?: string }>) => {
@@ -118,57 +126,91 @@ export function Designer({ onAuthRequired }: DesignerProps) {
       return;
     }
 
-    // Get uploaded blob URLs from the attachments controller
-    const attachmentIds = controller.attachments.files.map((f) => f.id);
-    const imageUrls = attachmentIds
-      .map((id) => uploadedFiles.get(id))
-      .filter((url): url is string => Boolean(url));
+    // Detect if video model is selected
+    const isVideoModel = selectedModel === "sora-2";
 
-    // Determine which operation to use
-    const isEdit = imageUrls.length > 0;
-    const operation = isEdit ? "edit" : "generate";
+    if (isVideoModel) {
+      // Video generation flow
+      const clientId = crypto.randomUUID();
 
-    // 1. Generate client ID and add to generating
-    const clientId = crypto.randomUUID();
+      // Get optional reference image (only first one for now)
+      const attachmentIds = controller.attachments.files.map((f) => f.id);
+      const firstAttachmentId = attachmentIds[0];
+      const referenceImageUrl = firstAttachmentId ? uploadedFiles.get(firstAttachmentId) : undefined;
 
-    addGenerating({
-      clientId,
-      prompt: message.text || "",
-      model: selectedModel,
-      operation,
-      timestamp: new Date(),
-    });
+      addGeneratingVideo({
+        clientId,
+        prompt: message.text || "",
+        model: selectedModel,
+        operation: "generate",
+        timestamp: new Date(),
+      });
 
-    try {
-      // 2. Call tRPC mutation
-      const result = isEdit
-        ? await editMutation.mutateAsync({
-            model: selectedModel,
-            operation: "edit",
-            prompt: message.text || "",
-            images: imageUrls,
-          })
-        : await generateMutation.mutateAsync({
-            model: selectedModel,
-            operation: "generate",
-            prompt: message.text || "",
-          });
+      try {
+        const result = await createVideoMutation.mutateAsync({
+          model: "sora-2",
+          prompt: message.text || "",
+          ...(referenceImageUrl && { input_reference: referenceImageUrl }),
+        });
 
-      // 3. Add to generated (context will invalidate tRPC)
-      void addGenerated(clientId, result.id);
-    } catch (error) {
-      console.error("Image operation error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to process image";
-      toast.error(errorMessage);
-      // Add to error state
-      addError(clientId, errorMessage);
+        // Start polling with the returned job ID
+        startPollingVideo(clientId, result.jobId);
+
+        // Clear the form
+        controller.textInput.clear();
+        controller.attachments.clear();
+        setUploadedFiles(new Map());
+      } catch (error) {
+        console.error("Video generation error:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to generate video";
+        toast.error(errorMessage);
+        addVideoError(clientId, errorMessage);
+      }
+    } else {
+      // Image generation flow (existing code)
+      const attachmentIds = controller.attachments.files.map((f) => f.id);
+      const imageUrls = attachmentIds
+        .map((id) => uploadedFiles.get(id))
+        .filter((url): url is string => Boolean(url));
+
+      const isEdit = imageUrls.length > 0;
+      const operation = isEdit ? "edit" : "generate";
+      const clientId = crypto.randomUUID();
+
+      addGenerating({
+        clientId,
+        prompt: message.text || "",
+        model: selectedModel as "nano-banana" | "gpt-image-1",
+        operation,
+        timestamp: new Date(),
+      });
+
+      try {
+        const result = isEdit
+          ? await editMutation.mutateAsync({
+              model: selectedModel as "nano-banana" | "gpt-image-1",
+              operation: "edit",
+              prompt: message.text || "",
+              images: imageUrls,
+            })
+          : await generateMutation.mutateAsync({
+              model: selectedModel as "nano-banana" | "gpt-image-1",
+              operation: "generate",
+              prompt: message.text || "",
+            });
+
+        void addGenerated(clientId, result.id);
+      } catch (error) {
+        console.error("Image operation error:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to process image";
+        toast.error(errorMessage);
+        addError(clientId, errorMessage);
+      }
     }
   };
 
   const handleModelChange = (model: string) => {
-    if (model === "nano-banana" || model === "gpt-image-1") {
-      setSelectedModel(model);
-    }
+    setSelectedModel(model);
   };
 
   const handleClear = () => {

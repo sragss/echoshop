@@ -3,6 +3,7 @@
 import { AuthDialog } from '@/components/auth-dialog';
 import { Designer } from '@/components/designer';
 import { Gallery } from '@/components/gallery';
+import { VideoPollingManager } from '@/components/video-polling-manager';
 import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
 import { GalleryProvider } from '@/contexts/gallery-context';
 import { useState } from "react";
@@ -61,6 +62,7 @@ export default function Home() {
   return (
     <PromptInputProvider>
       <GalleryProvider>
+        <VideoPollingManager />
         <HomeContent />
       </GalleryProvider>
     </PromptInputProvider>
