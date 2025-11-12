@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { getEchoToken } from '@/server/auth';
 import { fetchBlobAsResponse } from './image-helpers';
+import type { GenerateImageInput, EditImageInput } from '@/lib/generation-schema';
 
 /**
  * Get a Google AI client configured with Echo authentication
@@ -40,12 +41,22 @@ function extractImageFromResponse(response: Awaited<ReturnType<GoogleGenAI['mode
 /**
  * Generate an image using Google's Gemini model
  */
-export async function generateGoogleImage(prompt: string): Promise<Buffer> {
+export async function generateGoogleImage(input: GenerateImageInput): Promise<Buffer> {
     const google = await getGoogleClient();
+
+    // Build image config from input parameters
+    const imageConfig: { aspectRatio?: string; imageSize?: string } = {};
+    if (input.aspectRatio) {
+        imageConfig.aspectRatio = input.aspectRatio;
+    }
+    if (input.imageSize) {
+        imageConfig.imageSize = input.imageSize;
+    }
 
     const response = await google.models.generateContent({
         model: "gemini-2.5-flash-image-preview",
-        contents: prompt,
+        contents: input.prompt,
+        ...(Object.keys(imageConfig).length > 0 && { imageConfig }),
     });
 
     return extractImageFromResponse(response);
@@ -54,12 +65,12 @@ export async function generateGoogleImage(prompt: string): Promise<Buffer> {
 /**
  * Edit images using Google's Gemini model
  */
-export async function editGoogleImage(prompt: string, imageUrls: string[]): Promise<Buffer> {
+export async function editGoogleImage(input: EditImageInput): Promise<Buffer> {
     const google = await getGoogleClient();
 
     // Fetch images and convert to Google's format
     const imageData = await Promise.all(
-        imageUrls.map(async (url) => {
+        input.images.map(async (url) => {
             const response = await fetchBlobAsResponse(url);
             const arrayBuffer = await response.arrayBuffer();
             const base64Image = Buffer.from(arrayBuffer).toString('base64');
@@ -76,13 +87,23 @@ export async function editGoogleImage(prompt: string, imageUrls: string[]): Prom
 
     // Build contents with text and images
     const contents = [
-        { text: prompt },
+        { text: input.prompt },
         ...imageData,
     ];
+
+    // Build image config from input parameters
+    const imageConfig: { aspectRatio?: string; imageSize?: string } = {};
+    if (input.aspectRatio) {
+        imageConfig.aspectRatio = input.aspectRatio;
+    }
+    if (input.imageSize) {
+        imageConfig.imageSize = input.imageSize;
+    }
 
     const response = await google.models.generateContent({
         model: "gemini-2.5-flash-image-preview",
         contents,
+        ...(Object.keys(imageConfig).length > 0 && { imageConfig }),
     });
 
     return extractImageFromResponse(response);

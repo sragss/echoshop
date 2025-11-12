@@ -12,8 +12,8 @@ export async function generateImage(
   userId: string
 ): Promise<{ id: string; url: string }> {
   const imageBuffer = input.model === "gpt-image-1"
-    ? await generateOpenAIImage(input.prompt)
-    : await generateGoogleImage(input.prompt);
+    ? await generateOpenAIImage(input)
+    : await generateGoogleImage(input);
 
   return saveImageOutput(imageBuffer, input, userId);
 }
@@ -27,8 +27,8 @@ export async function editImage(
   userId: string
 ): Promise<{ id: string; url: string }> {
   const imageBuffer = input.model === "gpt-image-1"
-    ? await editOpenAIImage(input.prompt, input.images)
-    : await editGoogleImage(input.prompt, input.images);
+    ? await editOpenAIImage(input)
+    : await editGoogleImage(input);
 
   return saveImageOutput(imageBuffer, input, userId);
 }
