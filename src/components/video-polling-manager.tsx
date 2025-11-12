@@ -53,7 +53,7 @@ function VideoPoller({ video }: { video: ProcessingVideoItem }) {
     }
   }, [error, video.clientId, video.jobId, addVideoError]);
 
-  return null; // No UI
+  return null;
 }
 
 /**

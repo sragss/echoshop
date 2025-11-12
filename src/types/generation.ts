@@ -46,6 +46,15 @@ export interface ProcessingVideoItem {
 }
 
 /**
+ * Discriminated union for video state management
+ * Single type that eliminates race conditions between parallel arrays
+ */
+export type VideoItem =
+  | { state: "generating"; clientId: string; prompt: string; model: string; timestamp: Date }
+  | { state: "processing"; clientId: string; jobId: string; progress: number; prompt: string; model: string; timestamp: Date }
+  | { state: "error"; clientId: string; prompt: string; model: string; timestamp: Date; error: string };
+
+/**
  * Gallery item types - images and videos with various states
  */
 export type GalleryItemData =

@@ -4,7 +4,6 @@ import { generateVideoSchema } from "@/lib/video-schema";
 import {
   createVideoJob,
   getVideoJobStatus,
-  cancelVideoJob,
   listVideoJobs,
 } from "@/server/ai/video";
 
@@ -27,16 +26,6 @@ export const videoRouter = createTRPCRouter({
     .input(z.object({ jobId: z.string() }))
     .query(async ({ ctx, input }) => {
       return getVideoJobStatus(input.jobId, ctx.session.user.id);
-    }),
-
-  /**
-   * Cancel a pending or processing video generation job
-   */
-  cancel: protectedProcedure
-    .input(z.object({ jobId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      await cancelVideoJob(input.jobId, ctx.session.user.id);
-      return { success: true };
     }),
 
   /**

@@ -22,22 +22,12 @@ export function Gallery() {
   return (
     <div className="w-full max-w-2xl mx-auto py-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {items.map((item) => {
-          // Extract unique key based on item type
-          let key: string;
-          if (item.type === "completed") {
-            key = item.output.id;
-          } else if (item.type === "video-completed") {
-            key = item.video.id;
-          } else if (item.type === "loading" || item.type === "error") {
-            key = item.item.clientId;
-          } else {
-            // video-loading, video-processing, video-error all have item.clientId
-            key = item.item.clientId;
-          }
-
-          return <GalleryItem key={key} data={item} />;
-        })}
+        {items.map((item) => (
+          <GalleryItem
+            key={item.type === "completed" ? item.output.id : item.type === "video-completed" ? item.video.id : item.item.clientId}
+            data={item}
+          />
+        ))}
       </div>
 
       {hasMore && (

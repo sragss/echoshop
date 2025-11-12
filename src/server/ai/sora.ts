@@ -126,16 +126,3 @@ export async function downloadSoraVideo(jobId: string): Promise<{
     };
 }
 
-/**
- * Cancel a running Sora video generation job
- */
-export async function cancelSoraJob(jobId: string): Promise<void> {
-    const openai = await getOpenAIClient();
-    // Note: cancel method may not be available in all OpenAI SDK versions
-    // If it doesn't exist, this will be a no-op
-    if ('cancel' in openai.videos && typeof (openai.videos as any).cancel === 'function') {
-        await (openai.videos as any).cancel(jobId);
-    } else {
-        console.warn('Video cancellation not supported by OpenAI SDK');
-    }
-}

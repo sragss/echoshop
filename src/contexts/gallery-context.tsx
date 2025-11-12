@@ -3,15 +3,10 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { api } from "@/trpc/react";
 import { useSession } from "next-auth/react";
-import type { GeneratingItem, GeneratedItem, GalleryItemData, GeneratingVideoItem, ProcessingVideoItem } from "@/types/generation";
+import type { GeneratingItem, GeneratedItem, GalleryItemData, GeneratingVideoItem, ProcessingVideoItem, VideoItem } from "@/types/generation";
 
 interface ErrorItem {
   item: GeneratingItem;
-  error: string;
-}
-
-interface VideoErrorItem {
-  item: GeneratingVideoItem;
   error: string;
 }
 
@@ -45,14 +40,8 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   const [generated, setGenerated] = useState<GeneratedItem[]>([]);
   const [errors, setErrors] = useState<ErrorItem[]>([]);
 
-  // Video state - simplified to single array with status field
-  type VideoItemState =
-    | { clientId: string; status: 'generating'; timestamp: Date; prompt: string; model: string }
-    | { clientId: string; status: 'processing'; jobId: string; timestamp: Date; prompt: string; model: string; progress: number }
-    | { clientId: string; status: 'completed'; jobId: string }
-    | { clientId: string; status: 'error'; timestamp: Date; prompt: string; model: string; error: string };
-
-  const [videoItems, setVideoItems] = useState<VideoItemState[]>([]);
+  // Video state - single array with discriminated union
+  const [videoItems, setVideoItems] = useState<VideoItem[]>([]);
 
   const { data: session } = useSession();
   const utils = api.useUtils();
@@ -110,14 +99,18 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addError = useCallback((clientId: string, error: string) => {
-    // Find the generating item and move it to errors
+    // Find the generating item, add to errors, and remove from generating
+    // Use two sequential setState calls to avoid race condition
+    let foundItem: GeneratingItem | undefined;
+
     setGenerating((prev) => {
-      const item = prev.find((gen) => gen.clientId === clientId);
-      if (item) {
-        setErrors((prevErrors) => [...prevErrors, { item, error }]);
-      }
+      foundItem = prev.find((gen) => gen.clientId === clientId);
       return prev.filter((gen) => gen.clientId !== clientId);
     });
+
+    if (foundItem) {
+      setErrors((prev) => [...prev, { item: foundItem!, error }]);
+    }
   }, []);
 
   const removeGenerating = useCallback((clientId: string) => {
@@ -125,10 +118,16 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
     setErrors((prev) => prev.filter((err) => err.item.clientId !== clientId));
   }, []);
 
-  // Video methods - simplified
+  // Video methods - atomic updates with single array
   const addGeneratingVideo = useCallback((item: GeneratingVideoItem) => {
     setVideoItems((prev) => [
-      { clientId: item.clientId, status: 'generating', timestamp: item.timestamp, prompt: item.prompt, model: item.model },
+      {
+        state: "generating" as const,
+        clientId: item.clientId,
+        prompt: item.prompt,
+        model: item.model,
+        timestamp: item.timestamp,
+      },
       ...prev,
     ]);
   }, []);
@@ -136,8 +135,16 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   const startPollingVideo = useCallback((clientId: string, jobId: string) => {
     setVideoItems((prev) =>
       prev.map((item) =>
-        item.clientId === clientId && item.status === 'generating'
-          ? { clientId, status: 'processing' as const, jobId, timestamp: item.timestamp, prompt: item.prompt, model: item.model, progress: 10 }
+        item.state === "generating" && item.clientId === clientId
+          ? {
+              state: "processing" as const,
+              clientId,
+              jobId,
+              progress: 10,
+              prompt: item.prompt,
+              model: item.model,
+              timestamp: item.timestamp,
+            }
           : item
       )
     );
@@ -146,7 +153,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   const updateVideoProgress = useCallback((jobId: string, status: string, progress: number) => {
     setVideoItems((prev) =>
       prev.map((item) =>
-        item.status === 'processing' && item.jobId === jobId
+        item.state === "processing" && item.jobId === jobId
           ? { ...item, progress }
           : item
       )
@@ -155,15 +162,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
 
   const addVideoCompleted = useCallback(
     async (clientId: string, jobId: string) => {
-      setVideoItems((prev) =>
-        prev.map((item) =>
-          item.clientId === clientId
-            ? { clientId, status: 'completed' as const, jobId }
-            : item
-        )
-      );
-
-      // Invalidate tRPC to fetch new video data
+      setVideoItems((prev) => prev.filter((v) => v.clientId !== clientId));
       await utils.video.list.invalidate();
     },
     [utils]
@@ -172,15 +171,22 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   const addVideoError = useCallback((clientId: string, error: string) => {
     setVideoItems((prev) =>
       prev.map((item) =>
-        item.clientId === clientId && item.status !== 'completed'
-          ? { clientId, status: 'error' as const, timestamp: item.timestamp, prompt: item.prompt, model: item.model, error }
+        item.clientId === clientId
+          ? {
+              state: "error" as const,
+              clientId,
+              prompt: item.prompt,
+              model: item.model,
+              timestamp: item.timestamp,
+              error,
+            }
           : item
       )
     );
   }, []);
 
   const removeGeneratingVideo = useCallback((clientId: string) => {
-    setVideoItems((prev) => prev.filter((item) => item.clientId !== clientId));
+    setVideoItems((prev) => prev.filter((v) => v.clientId !== clientId));
   }, []);
 
   // Auto-cleanup: Remove image items from state arrays once they appear in loaded data
@@ -203,12 +209,8 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
     if (!loadedVideos || loadedVideos.length === 0) return;
 
     const loadedJobIds = new Set(loadedVideos.map((v) => v.id));
-
     setVideoItems((prev) =>
-      prev.filter((item) =>
-        // Keep if not completed, or if completed but not yet in loadedVideos
-        item.status !== 'completed' || !loadedJobIds.has(item.jobId)
-      )
+      prev.filter((v) => v.state !== "processing" || !loadedJobIds.has(v.jobId))
     );
   }, [loadedVideos]);
 
@@ -216,7 +218,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
   const items = useMemo(() => {
     const result: GalleryItemData[] = [];
 
-    // Image errors
+    // All errors first
     result.push(
       ...errors.map(({ item, error }) => ({
         type: "error" as const,
@@ -225,21 +227,9 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
       }))
     );
 
-    // Video items - map based on status
+    // Video items mapped from discriminated union
     videoItems.forEach((videoItem) => {
-      if (videoItem.status === 'error') {
-        result.push({
-          type: "video-error" as const,
-          item: {
-            clientId: videoItem.clientId,
-            prompt: videoItem.prompt,
-            model: videoItem.model,
-            operation: "generate" as const,
-            timestamp: videoItem.timestamp,
-          },
-          error: videoItem.error,
-        });
-      } else if (videoItem.status === 'generating') {
+      if (videoItem.state === "generating") {
         result.push({
           type: "video-loading" as const,
           item: {
@@ -250,7 +240,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
             timestamp: videoItem.timestamp,
           },
         });
-      } else if (videoItem.status === 'processing') {
+      } else if (videoItem.state === "processing") {
         result.push({
           type: "video-processing" as const,
           item: {
@@ -263,8 +253,19 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
             timestamp: videoItem.timestamp,
           },
         });
+      } else if (videoItem.state === "error") {
+        result.push({
+          type: "video-error" as const,
+          item: {
+            clientId: videoItem.clientId,
+            prompt: videoItem.prompt,
+            model: videoItem.model,
+            operation: "generate" as const,
+            timestamp: videoItem.timestamp,
+          },
+          error: videoItem.error,
+        });
       }
-      // Skip 'completed' - those come from loadedVideos
     });
 
     // Images being generated
@@ -293,7 +294,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
       const completedImages = loadedImages.map((output) => ({
         type: "completed" as const,
         output,
-        completedAt: output.createdAt, // Images use createdAt (set when generation completes)
+        completedAt: output.createdAt,
       }));
 
       const completedVideos = loadedVideos
@@ -302,11 +303,10 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
             .map((video) => ({
               type: "video-completed" as const,
               video,
-              completedAt: video.updatedAt, // Videos use updatedAt (updated when status changes to completed)
+              completedAt: video.updatedAt,
             }))
         : [];
 
-      // Combine and sort by completion time (most recent first)
       const allCompleted = [...completedImages, ...completedVideos].sort(
         (a, b) => b.completedAt.getTime() - a.completedAt.getTime()
       );
@@ -315,14 +315,7 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
     }
 
     return result;
-  }, [
-    generating,
-    generated,
-    loadedImages,
-    errors,
-    videoItems,
-    loadedVideos,
-  ]);
+  }, [generating, generated, loadedImages, errors, videoItems, loadedVideos]);
 
   const loadMore = useCallback(() => {
     // Load more for both images and videos
@@ -349,17 +342,15 @@ export function GalleryProvider({ children }: { children: React.ReactNode }) {
     addVideoCompleted: (clientId: string, jobId: string) => void addVideoCompleted(clientId, jobId),
     addVideoError,
     removeGeneratingVideo,
-    processingVideos: videoItems
-      .filter((v): v is Extract<VideoItemState, { status: 'processing' }> => v.status === 'processing')
-      .map((v) => ({
-        clientId: v.clientId,
-        jobId: v.jobId,
-        status: 'processing' as const,
-        progress: v.progress,
-        prompt: v.prompt,
-        model: v.model,
-        timestamp: v.timestamp,
-      })),
+    processingVideos: videoItems.filter((v): v is Extract<VideoItem, { state: "processing" }> => v.state === "processing").map((v) => ({
+      clientId: v.clientId,
+      jobId: v.jobId,
+      status: "processing" as const,
+      progress: v.progress,
+      prompt: v.prompt,
+      model: v.model,
+      timestamp: v.timestamp,
+    })),
     // Pagination
     loadMore,
     hasMore: (hasNextImagePage ?? false) || (hasNextVideoPage ?? false),
