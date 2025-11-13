@@ -1,7 +1,5 @@
-import { postRouter } from '@/server/api/routers/post';
 import { uploadRouter } from '@/server/api/routers/upload';
-import { outputRouter } from '@/server/api/routers/output';
-import { imageRouter } from '@/server/api/routers/image';
+import { jobRouter } from '@/server/api/routers/job';
 import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc';
 
 /**
@@ -10,10 +8,8 @@ import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc';
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  post: postRouter,
   upload: uploadRouter,
-  output: outputRouter,
-  image: imageRouter,
+  job: jobRouter,
 });
 
 // export type definition of API
@@ -23,7 +19,6 @@ export type AppRouter = typeof appRouter;
  * Create a server-side caller for the tRPC API.
  * @example
  * const trpc = createCaller(createContext);
- * const res = await trpc.post.all();
- *       ^? Post[]
+ * const res = await trpc.video.list();
  */
 export const createCaller = createCallerFactory(appRouter);

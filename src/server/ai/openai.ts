@@ -1,7 +1,17 @@
 import { OpenAI } from "openai";
 import { getEchoToken } from "../auth";
-import { fetchBlobAsResponse } from './image-helpers';
-import type { GenerateImageInput, EditImageInput } from '@/lib/generation-schema';
+import type { GptImage1GenSettings, GptImage1EditSettings } from '@/lib/schema';
+
+/**
+ * Fetch a blob URL and return as Response object
+ */
+async function fetchBlobAsResponse(url: string): Promise<Response> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image from blob storage: ${url}`);
+  }
+  return response;
+}
 
 /**
  * Get an OpenAI client configured with Echo authentication
@@ -39,7 +49,7 @@ function extractImageFromResponse(response: OpenAI.Images.ImagesResponse): Buffe
 /**
  * Generate an image using OpenAI's gpt-image-1 model
  */
-export async function generateOpenAIImage(input: GenerateImageInput): Promise<Buffer> {
+export async function generateOpenAIImage(input: GptImage1GenSettings): Promise<Buffer> {
     const openai = await getOpenAIClient();
 
     const response = await openai.images.generate({
@@ -52,7 +62,6 @@ export async function generateOpenAIImage(input: GenerateImageInput): Promise<Bu
         output_format: input.output_format,
         output_compression: input.output_compression,
         moderation: input.moderation ?? "low", // Override default to "low"
-        n: input.n,
         // Note: response_format is not supported for gpt-image-1
         // The model always returns base64 in b64_json field
     });
@@ -63,7 +72,7 @@ export async function generateOpenAIImage(input: GenerateImageInput): Promise<Bu
 /**
  * Edit images using OpenAI's gpt-image-1 model
  */
-export async function editOpenAIImage(input: EditImageInput): Promise<Buffer> {
+export async function editOpenAIImage(input: GptImage1EditSettings): Promise<Buffer> {
     const openai = await getOpenAIClient();
 
     // Fetch images and convert to File objects with proper MIME types
@@ -71,7 +80,7 @@ export async function editOpenAIImage(input: EditImageInput): Promise<Buffer> {
         input.images.map(async (url, index) => {
             const response = await fetchBlobAsResponse(url);
             const blob = await response.blob();
-            const contentType = response.headers.get('content-type') || 'image/png';
+            const contentType = response.headers.get('content-type') ?? 'image/png';
 
             // OpenAI SDK expects File objects with proper type
             return new File([blob], `image-${index}.png`, { type: contentType });
@@ -88,7 +97,6 @@ export async function editOpenAIImage(input: EditImageInput): Promise<Buffer> {
         background: input.background,
         output_format: input.output_format,
         output_compression: input.output_compression,
-        n: input.n,
         input_fidelity: input.input_fidelity,
         // Note: moderation is not supported for edit, only for generate
     });

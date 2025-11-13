@@ -39,7 +39,7 @@ async function refreshEchoToken(refreshToken: string): Promise<EchoTokenResponse
     throw new Error(`Failed to refresh Echo token: ${response.status} ${error}`);
   }
 
-  return response.json();
+  return response.json() as Promise<EchoTokenResponse>;
 }
 
 /**

@@ -20,8 +20,8 @@ export const modelCategories: ModelCategory[] = [
   {
     name: "Video",
     models: [
-      { id: "sora2", name: "Sora2", provider: "openai" },
-      { id: "veo3", name: "Veo3", provider: "google" },
+      { id: "sora-2", name: "Sora 2", provider: "openai" },
+      // { id: "veo3", name: "Veo 3", provider: "google" },
     ],
   },
 ];

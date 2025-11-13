@@ -8,10 +8,11 @@ import {
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useUpload } from '@/hooks/use-upload';
-import { useGallery } from "@/contexts/gallery-context";
 import { modelCategories } from '@/config/models';
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
+import { jobSettingsSchema, type JobSettings } from "@/lib/schema";
+import type { Prisma } from "@/../../generated/prisma";
 
 interface DesignerProps {
   onAuthRequired: () => void;
@@ -19,15 +20,47 @@ interface DesignerProps {
 
 export function Designer({ onAuthRequired }: DesignerProps) {
   const [uploadedFiles, setUploadedFiles] = useState<Map<string, string>>(new Map());
-  const [selectedModel, setSelectedModel] = useState<"nano-banana" | "gpt-image-1">(modelCategories[0]?.models[0]?.id as "nano-banana" | "gpt-image-1" ?? "nano-banana");
+  const [selectedModel, setSelectedModel] = useState<string>(modelCategories[0]?.models[0]?.id ?? "nano-banana");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { data: session } = useSession();
   const { uploadFile, uploadProgress, isAnyUploading } = useUpload();
   const controller = usePromptInputController();
-  const { addGenerating, addGenerated, addError } = useGallery();
+  const utils = api.useUtils();
 
-  const generateMutation = api.image.generate.useMutation();
-  const editMutation = api.image.edit.useMutation();
+  const jobCreate = api.job.create.useMutation({
+    onSuccess: (data, variables) => {
+      // Optimistically add the new job to the cache immediately
+      utils.job.list.setData({ limit: 50 }, (oldData) => {
+        if (!oldData) return oldData;
+
+        // Create optimistic job entry matching the exact return type
+        // Use Zod to ensure the input is properly validated and typed
+        const parsedInput = jobSettingsSchema.parse(variables);
+        const newJob: typeof oldData[0] = {
+          id: data.jobId,
+          type: variables.type,
+          input: parsedInput as Prisma.JsonValue, // Zod-validated input is safe to use as JsonValue
+          status: 'pending',
+          progress: 0,
+          result: undefined,
+          error: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        // Add to beginning of list
+        return [newJob, ...oldData];
+      });
+
+      // Background refetch to ensure consistency
+      void utils.job.list.invalidate();
+    },
+    onError: (error) => {
+      console.error("Job creation error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to create job";
+      toast.error(errorMessage);
+    },
+  });
 
   // Handle newly added files
   const handleFilesAdded = async (newFiles: Array<{ id: string; url: string; filename?: string; mediaType?: string }>) => {
@@ -118,57 +151,72 @@ export function Designer({ onAuthRequired }: DesignerProps) {
       return;
     }
 
-    // Get uploaded blob URLs from the attachments controller
+    const prompt = message.text || "";
+
+    // Get uploaded image URLs
     const attachmentIds = controller.attachments.files.map((f) => f.id);
     const imageUrls = attachmentIds
       .map((id) => uploadedFiles.get(id))
       .filter((url): url is string => Boolean(url));
 
-    // Determine which operation to use
     const isEdit = imageUrls.length > 0;
-    const operation = isEdit ? "edit" : "generate";
 
-    // 1. Generate client ID and add to generating
-    const clientId = crypto.randomUUID();
+    // Build job settings based on model and operation
+    let jobSettings: JobSettings;
 
-    addGenerating({
-      clientId,
-      prompt: message.text || "",
-      model: selectedModel,
-      operation,
-      timestamp: new Date(),
-    });
-
-    try {
-      // 2. Call tRPC mutation
-      const result = isEdit
-        ? await editMutation.mutateAsync({
-            model: selectedModel,
-            operation: "edit",
-            prompt: message.text || "",
-            images: imageUrls,
-          })
-        : await generateMutation.mutateAsync({
-            model: selectedModel,
-            operation: "generate",
-            prompt: message.text || "",
-          });
-
-      // 3. Add to generated (context will invalidate tRPC)
-      void addGenerated(clientId, result.id);
-    } catch (error) {
-      console.error("Image operation error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to process image";
-      toast.error(errorMessage);
-      // Add to error state
-      addError(clientId, errorMessage);
+    if (selectedModel === "sora-2") {
+      // Video generation
+      jobSettings = {
+        type: "sora-2-video",
+        model: "sora-2",
+        prompt,
+        seconds: "4",
+        ...(imageUrls[0] && { input_reference: imageUrls[0] }),
+      };
+    } else if (selectedModel === "gpt-image-1") {
+      // GPT image generation or edit
+      if (isEdit) {
+        jobSettings = {
+          type: "gpt-image-1-edit",
+          model: "gpt-image-1",
+          prompt,
+          images: imageUrls,
+          quality: "high",
+        };
+      } else {
+        jobSettings = {
+          type: "gpt-image-1-generate",
+          model: "gpt-image-1",
+          prompt,
+          quality: "high",
+        };
+      }
+    } else {
+      // Nano banana generation or edit
+      if (isEdit) {
+        jobSettings = {
+          type: "nano-banana-edit",
+          model: "nano-banana",
+          prompt,
+          images: imageUrls,
+          aspectRatio: "16:9",
+        };
+      } else {
+        jobSettings = {
+          type: "nano-banana-generate",
+          model: "nano-banana",
+          prompt,
+          aspectRatio: "16:9",
+        };
+      }
     }
+
+    // Create the job
+    await jobCreate.mutateAsync(jobSettings);
   };
 
   const handleModelChange = (model: string) => {
-    if (model === "nano-banana" || model === "gpt-image-1") {
-      setSelectedModel(model);
-    }
+    setSelectedModel(model);
   };
 
   const handleClear = () => {

@@ -1,7 +1,17 @@
 import { GoogleGenAI } from '@google/genai';
 import { getEchoToken } from '@/server/auth';
-import { fetchBlobAsResponse } from './image-helpers';
-import type { GenerateImageInput, EditImageInput } from '@/lib/generation-schema';
+import type { NanoBananaGenSettings, NanoBananaEditSettings } from '@/lib/schema';
+
+/**
+ * Fetch a blob URL and return as Response object
+ */
+async function fetchBlobAsResponse(url: string): Promise<Response> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image from blob storage: ${url}`);
+  }
+  return response;
+}
 
 /**
  * Get a Google AI client configured with Echo authentication
@@ -41,7 +51,7 @@ function extractImageFromResponse(response: Awaited<ReturnType<GoogleGenAI['mode
 /**
  * Generate an image using Google's Gemini model
  */
-export async function generateGoogleImage(input: GenerateImageInput): Promise<Buffer> {
+export async function generateGoogleImage(input: NanoBananaGenSettings): Promise<Buffer> {
     const google = await getGoogleClient();
 
     // Build image config from input parameters
@@ -65,7 +75,7 @@ export async function generateGoogleImage(input: GenerateImageInput): Promise<Bu
 /**
  * Edit images using Google's Gemini model
  */
-export async function editGoogleImage(input: EditImageInput): Promise<Buffer> {
+export async function editGoogleImage(input: NanoBananaEditSettings): Promise<Buffer> {
     const google = await getGoogleClient();
 
     // Fetch images and convert to Google's format
@@ -74,7 +84,7 @@ export async function editGoogleImage(input: EditImageInput): Promise<Buffer> {
             const response = await fetchBlobAsResponse(url);
             const arrayBuffer = await response.arrayBuffer();
             const base64Image = Buffer.from(arrayBuffer).toString('base64');
-            const contentType = response.headers.get('content-type') || 'image/png';
+            const contentType = response.headers.get('content-type') ?? 'image/png';
 
             return {
                 inlineData: {

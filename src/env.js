@@ -13,6 +13,7 @@ export const env = createEnv({
         : z.string().optional(),
     DATABASE_URL: z.string().url(),
     BLOB_READ_WRITE_TOKEN: z.string(),
+    JANITOR_SECRET: z.string().min(32, "JANITOR_SECRET must be at least 32 characters"),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -35,6 +36,7 @@ export const env = createEnv({
     AUTH_SECRET: process.env.AUTH_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+    JANITOR_SECRET: process.env.JANITOR_SECRET,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

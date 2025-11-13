@@ -15,17 +15,6 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
-}
 
 // Necessary for Next auth
 model Account {
@@ -56,16 +45,16 @@ model Session {
 }
 
 model User {
-    id            String    @id @default(cuid())
+    id            String     @id @default(cuid())
     name          String?
-    email         String?   @unique
+    email         String?    @unique
     emailVerified DateTime?
     image         String?
     accounts      Account[]
     sessions      Session[]
-    posts         Post[]
     uploads       Upload[]
-    outputs       Output[]
+    jobs          Job[]
+    results       Result[]
 }
 
 model VerificationToken {
@@ -89,13 +78,41 @@ model Upload {
     @@index([userId])
 }
 
-model Output {
-    id        String   @id @default(cuid())
-    userId    String
-    input     Json
-    outputUrl String
+model Job {
+    id String @id @default(cuid())
+    userId String
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    type String
+    input Json
+
+    status String // pending, loading, complete, failed
+    progress Int @default(0) // 0-100
+
+    result Result?
+    error String?
+
     createdAt DateTime @default(now())
-    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    updatedAt DateTime @updatedAt
+
+    @@index([userId])
+    @@index([status])
+
+}
+
+model Result {
+    id String @id @default(cuid())
+
+    userId String
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    jobId String @unique
+    job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+    output Json
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
     @@index([userId])
 }
