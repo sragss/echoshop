@@ -4,13 +4,28 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { XCircle, Copy, Plus } from "lucide-react";
 import { nanoid } from "nanoid";
-import type { GalleryItemData } from "@/types/generation";
-import type { OutputMetadata } from "@/lib/generation-schema";
-import { useGallery } from "@/contexts/gallery-context";
 import { usePromptInputAttachments } from "@/components/ai-elements/prompt-input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { api } from "@/trpc/react";
+import type { ImageResult, VideoResult } from "@/lib/schema";
+
+type JobWithResult = {
+  id: string;
+  type: string;
+  input: unknown; // Prisma JsonValue
+  status: string;
+  progress: number;
+  result: unknown; // Prisma JsonValue
+  error: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+interface GalleryItemProps {
+  job: JobWithResult;
+}
 
 /**
  * Loading timer that shows elapsed time during generation
@@ -33,314 +48,277 @@ function LoadingTimer({ startTime }: { startTime: Date }) {
   );
 }
 
-/**
- * Shared CSS classes for card containers
- */
-const CARD_CLASSES = "aspect-square relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500";
-
-/**
- * Type-safe metadata extraction helpers
- */
-const getVideoMetadata = (input: unknown) => {
-  const meta = input as { prompt?: string; model?: string };
-  return {
-    prompt: meta.prompt || "Video",
-    model: meta.model || "video",
-  };
+// Helper to determine if a job type produces an image
+const isImageJob = (type: string): boolean => {
+  return type === "gpt-image-1-generate" ||
+         type === "gpt-image-1-edit" ||
+         type === "nano-banana-generate" ||
+         type === "nano-banana-edit";
 };
 
-/**
- * Loading state component - handles both image and video loading
- */
-function LoadingState({ startTime, label }: { startTime: Date; label?: string }) {
-  return (
-    <div className={CARD_CLASSES}>
-      <div className="flex items-center justify-center h-full bg-gray-100 animate-pulse">
-        <div className="flex flex-col items-center gap-2">
-          {label && <div className="text-sm text-gray-600">{label}</div>}
-          <LoadingTimer startTime={startTime} />
-        </div>
-      </div>
-    </div>
-  );
-}
+// Helper to determine if a job type produces a video
+const isVideoJob = (type: string): boolean => {
+  return type === "sora-2-video";
+};
 
-/**
- * Shared error state component for both image and video errors
- */
-function ErrorState({ error, onDismiss }: { error: string; onDismiss: () => void }) {
-  return (
-    <div className="aspect-square relative overflow-hidden rounded-md border-2 border-red-300 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
-      <div className="flex flex-col items-center justify-center h-full p-4 bg-red-50">
-        <XCircle className="h-12 w-12 text-red-400 mb-2" />
-        <p className="text-xs text-red-600 text-center mb-2">{error}</p>
-        <button
-          onClick={onDismiss}
-          className="text-xs text-red-600 hover:text-red-700 font-medium underline"
-          title="Dismiss error"
-        >
-          Dismiss
-        </button>
-      </div>
-    </div>
-  );
-}
+const CARD_CLASSES = "aspect-square relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500";
 
-/**
- * Completed video component with thumbnail and play button
- */
-function CompletedVideo({ video, onOpen }: { video: { thumbnailUrl: string | null; videoUrl: string | null; input: unknown }; onOpen: () => void }) {
-  return (
-    <div className={`${CARD_CLASSES} group cursor-pointer`}>
-      <button onClick={onOpen} className="w-full h-full relative">
-        {video.thumbnailUrl && (
-          <Image
-            src={video.thumbnailUrl}
-            alt="Video thumbnail"
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-          />
-        )}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
-          <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
-            <div className="w-0 h-0 border-l-[20px] border-l-black border-y-[12px] border-y-transparent ml-1" />
-          </div>
-        </div>
-      </button>
-    </div>
-  );
-}
-
-/**
- * Video dialog content
- */
-function VideoDialog({ video, open, onOpenChange }: { video: { videoUrl: string | null; thumbnailUrl: string | null; input: unknown }; open: boolean; onOpenChange: (open: boolean) => void }) {
-  const metadata = getVideoMetadata(video.input);
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-        <DialogTitle className="sr-only">Video Details</DialogTitle>
-        {video.videoUrl && (
-          <div className="relative w-full">
-            <video
-              src={video.videoUrl}
-              controls
-              autoPlay
-              loop
-              className="w-full h-auto"
-              poster={video.thumbnailUrl || undefined}
-            >
-              Your browser does not support the video tag.
-            </video>
-          </div>
-        )}
-        <div className="px-6 py-4 space-y-2">
-          <p className="text-sm text-gray-900">{metadata.prompt}</p>
-          <div className="flex gap-2 text-xs text-gray-500">
-            <span>{metadata.model}</span>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/**
- * Completed image component with hover actions
- */
-function CompletedImage({
-  output,
-  metadata,
-  onOpen,
-  onCopy,
-  onAddToPrompt
-}: {
-  output: { outputUrl: string };
-  metadata: OutputMetadata;
-  onOpen: () => void;
-  onCopy: (e: React.MouseEvent) => void;
-  onAddToPrompt: (e: React.MouseEvent) => void;
-}) {
-  return (
-    <div className={`${CARD_CLASSES} group cursor-pointer`}>
-      <button onClick={onOpen} className="w-full h-full">
-        <Image
-          src={output.outputUrl}
-          alt={metadata.prompt}
-          fill
-          className="object-cover"
-          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-        />
-      </button>
-      <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-200 pointer-events-none" />
-      <div className="absolute bottom-2 right-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
-        <Button
-          onClick={onCopy}
-          size="icon-sm"
-          variant="outline"
-          className="pointer-events-auto shadow-lg"
-          title="Copy image"
-        >
-          <Copy />
-        </Button>
-        <Button
-          onClick={onAddToPrompt}
-          size="icon-sm"
-          variant="outline"
-          className="pointer-events-auto shadow-lg"
-          title="Add to prompt"
-        >
-          <Plus />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Image dialog content
- */
-function ImageDialog({
-  output,
-  metadata,
-  open,
-  onOpenChange
-}: {
-  output: { outputUrl: string };
-  metadata: OutputMetadata;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const inputImages = metadata.operation === "edit" ? metadata.images : [];
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-        <DialogTitle className="sr-only">Image Details</DialogTitle>
-        <div className="relative w-full">
-          <Image
-            src={output.outputUrl}
-            alt={metadata.prompt}
-            width={1024}
-            height={1024}
-            className="w-full h-auto"
-          />
-        </div>
-        <div className="px-6 py-4 space-y-2">
-          <p className="text-sm text-gray-900">{metadata.prompt}</p>
-          <div className="flex gap-2 text-xs text-gray-500">
-            <span className="capitalize">{metadata.operation}</span>
-            <span>•</span>
-            <span>{metadata.model}</span>
-          </div>
-          {inputImages.length > 0 && (
-            <div className="flex gap-2 pt-2">
-              {inputImages.map((url, idx) => (
-                <div key={idx} className="relative w-16 h-16">
-                  <Image
-                    src={url}
-                    alt={`Input ${idx + 1}`}
-                    fill
-                    className="object-cover rounded"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/**
- * Gallery item that shows loading, error, or completed image state
- * - Loading: Loading skeleton with timer
- * - Error: Red border with error message and dismiss button
- * - Completed: Clickable image that opens detail dialog
- */
-export function GalleryItem({ data }: { data: GalleryItemData }) {
-  const { removeGenerating, removeGeneratingVideo } = useGallery();
-  const attachments = usePromptInputAttachments();
+export function GalleryItem({ job: initialJob }: GalleryItemProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const attachments = usePromptInputAttachments();
+  const utils = api.useUtils();
 
-  // Loading states
-  if (data.type === "loading") return <LoadingState startTime={data.item.timestamp} />;
-  if (data.type === "video-loading") return <LoadingState startTime={data.item.timestamp} label="Submitting..." />;
+  // Self-poll if job is not complete
+  const { data: liveJob } = api.job.getStatus.useQuery(
+    { jobId: initialJob.id },
+    {
+      enabled: initialJob.status === "loading" || initialJob.status === "pending",
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        return status === "complete" || status === "failed" ? false : 2000;
+      },
+    }
+  );
 
-  // Error states
-  if (data.type === "error") return <ErrorState error={data.error} onDismiss={() => removeGenerating(data.item.clientId)} />;
-  if (data.type === "video-error") return <ErrorState error={data.error} onDismiss={() => removeGeneratingVideo(data.item.clientId)} />;
+  // Use live data if available, otherwise use initial data
+  const job = liveJob ?? initialJob;
 
-  // Video processing state (polling with progress)
-  if (data.type === "video-processing") {
+  // Invalidate list when job completes
+  useEffect(() => {
+    if (job.status === "complete" || job.status === "failed") {
+      void utils.job.list.invalidate();
+    }
+  }, [job.status, utils.job.list]);
+
+  // Loading state
+  if (job.status === "pending" || job.status === "loading") {
+    // Show progress bar only for video jobs
+    if (isVideoJob(job.type)) {
+      return (
+        <div className={CARD_CLASSES}>
+          <div className="flex flex-col items-center justify-center h-full p-4 bg-gray-50">
+            <div className="w-3/4 h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
+              <div
+                className="h-full bg-blue-500 transition-all duration-300"
+                style={{ width: `${job.progress}%` }}
+              />
+            </div>
+            <p className="text-sm text-gray-600 mb-1">{job.progress}%</p>
+            <LoadingTimer startTime={job.createdAt} />
+          </div>
+        </div>
+      );
+    }
+
+    // For image jobs, just show a pulse animation
     return (
       <div className={CARD_CLASSES}>
-        <div className="flex flex-col items-center justify-center h-full p-4 bg-gray-50">
-          <div className="w-3/4 h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
-            <div
-              className="h-full bg-blue-500 transition-all duration-300"
-              style={{ width: `${data.item.progress}%` }}
-            />
-          </div>
-          <p className="text-sm text-gray-600 mb-1">{data.item.progress}%</p>
-          <LoadingTimer startTime={data.item.timestamp} />
+        <div className="flex items-center justify-center h-full bg-gray-100 animate-pulse">
+          <LoadingTimer startTime={job.createdAt} />
         </div>
       </div>
     );
   }
 
-  // Video completed state
-  if (data.type === "video-completed") {
+  // Error state
+  if (job.status === "failed") {
+    return (
+      <div className="aspect-square relative overflow-hidden rounded-md border-2 border-red-300 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="flex flex-col items-center justify-center h-full p-4 bg-red-50">
+          <XCircle className="h-12 w-12 text-red-400 mb-2" />
+          <p className="text-xs text-red-600 text-center mb-2">{job.error || "Generation failed"}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No result yet (shouldn't happen if status is complete, but defensive)
+  if (!job.result) {
+    return (
+      <div className={CARD_CLASSES}>
+        <div className="flex items-center justify-center h-full bg-gray-100">
+          <p className="text-sm text-gray-500">No result</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Completed - render based on output type
+  if (isImageJob(job.type)) {
+    const imageResult = job.result as ImageResult;
+
+    const handleCopy = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      try {
+        const response = await fetch(imageResult.imageUrl);
+        const blob = await response.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ [blob.type]: blob }),
+        ]);
+        toast.success("Image copied to clipboard");
+      } catch (error) {
+        console.error("Failed to copy image:", error);
+        toast.error("Failed to copy image");
+      }
+    };
+
+    const handleAddToPrompt = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const id = nanoid();
+      attachments.addPreUploaded(id, imageResult.imageUrl, "image/jpeg", "gallery-image.jpg");
+    };
+
     return (
       <>
-        <CompletedVideo video={data.video} onOpen={() => setDialogOpen(true)} />
-        <VideoDialog video={data.video} open={dialogOpen} onOpenChange={setDialogOpen} />
+        <div className={`${CARD_CLASSES} group cursor-pointer`}>
+          <button onClick={() => setDialogOpen(true)} className="w-full h-full">
+            <Image
+              src={imageResult.imageUrl}
+              alt="Generated image"
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+            />
+          </button>
+          <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-200 pointer-events-none" />
+          <div className="absolute bottom-2 right-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+            <Button
+              onClick={handleCopy}
+              size="icon-sm"
+              variant="outline"
+              className="pointer-events-auto shadow-lg"
+              title="Copy image"
+            >
+              <Copy />
+            </Button>
+            <Button
+              onClick={handleAddToPrompt}
+              size="icon-sm"
+              variant="outline"
+              className="pointer-events-auto shadow-lg"
+              title="Add to prompt"
+            >
+              <Plus />
+            </Button>
+          </div>
+        </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogTitle className="sr-only">Image Details</DialogTitle>
+            <div className="relative w-full">
+              <Image
+                src={imageResult.imageUrl}
+                alt="Generated image"
+                width={1024}
+                height={1024}
+                className="w-full h-auto"
+              />
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm text-gray-900">{(job.input as any)?.prompt || "No prompt"}</p>
+              <div className="flex gap-2 text-xs text-gray-500">
+                <span>{(job.input as any)?.model || job.type}</span>
+                {(job.input as any)?.images && (
+                  <>
+                    <span>•</span>
+                    <span>Edit with {(job.input as any).images.length} reference image{(job.input as any).images.length > 1 ? 's' : ''}</span>
+                  </>
+                )}
+              </div>
+              {(job.input as any)?.images && (job.input as any).images.length > 0 && (
+                <div className="flex gap-2 flex-wrap pt-2">
+                  {(job.input as any).images.map((url: string, idx: number) => (
+                    <div key={idx} className="relative w-20 h-20 rounded border border-gray-200 overflow-hidden">
+                      <Image
+                        src={url}
+                        alt={`Input ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                        sizes="80px"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </>
     );
   }
 
-  // Render completed image
-  const output = data.output;
-  const metadata = output.input as OutputMetadata;
+  if (isVideoJob(job.type)) {
+    const videoResult = job.result as VideoResult;
 
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const response = await fetch(output.outputUrl);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
-      toast.success("Image copied to clipboard");
-    } catch (error) {
-      console.error("Failed to copy image:", error);
-      toast.error("Failed to copy image");
-    }
-  };
+    return (
+      <>
+        <div className={`${CARD_CLASSES} group cursor-pointer`}>
+          <button onClick={() => setDialogOpen(true)} className="w-full h-full relative">
+            {videoResult.thumbnailUrl && (
+              <Image
+                src={videoResult.thumbnailUrl}
+                alt="Video thumbnail"
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+              />
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+              <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+                <div className="w-0 h-0 border-l-[20px] border-l-black border-y-[12px] border-y-transparent ml-1" />
+              </div>
+            </div>
+          </button>
+        </div>
 
-  const handleAddToPrompt = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const id = nanoid();
-    attachments.addPreUploaded(id, output.outputUrl, "image/jpeg", "gallery-image.jpg");
-  };
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogTitle className="sr-only">Video Details</DialogTitle>
+            {videoResult.videoUrl && (
+              <div className="relative w-full">
+                <video
+                  src={videoResult.videoUrl}
+                  controls
+                  autoPlay
+                  loop
+                  className="w-full h-auto"
+                  poster={videoResult.thumbnailUrl || undefined}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            )}
+            <div className="px-6 py-4 space-y-2">
+              <p className="text-sm text-gray-900">{(job.input as any)?.prompt || "No prompt"}</p>
+              <div className="flex gap-2 text-xs text-gray-500">
+                <span>{(job.input as any)?.model || job.type}</span>
+                {(job.input as any)?.seconds && (
+                  <>
+                    <span>•</span>
+                    <span>{(job.input as any).seconds}s</span>
+                  </>
+                )}
+                {(job.input as any)?.size && (
+                  <>
+                    <span>•</span>
+                    <span>{(job.input as any).size}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 
+  // Unknown job type
   return (
-    <>
-      <CompletedImage
-        output={output}
-        metadata={metadata}
-        onOpen={() => setDialogOpen(true)}
-        onCopy={handleCopy}
-        onAddToPrompt={handleAddToPrompt}
-      />
-      <ImageDialog
-        output={output}
-        metadata={metadata}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
-    </>
+    <div className={CARD_CLASSES}>
+      <div className="flex items-center justify-center h-full bg-gray-100">
+        <p className="text-sm text-gray-500">Unknown type: {job.type}</p>
+      </div>
+    </div>
   );
 }

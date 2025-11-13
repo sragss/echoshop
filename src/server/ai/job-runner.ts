@@ -198,6 +198,7 @@ export async function getJobStatus(jobId: string, userId: string) {
     return {
         id: job.id,
         type: job.type,
+        input: job.input,
         status: job.status,
         progress: job.progress,
         result: job.result?.output,
@@ -236,6 +237,7 @@ export async function listJobs(
     return jobs.map(job => ({
         id: job.id,
         type: job.type,
+        input: job.input,
         status: job.status,
         progress: job.progress,
         result: job.result?.output,

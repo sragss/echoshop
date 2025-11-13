@@ -8,10 +8,10 @@ import {
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useUpload } from '@/hooks/use-upload';
-import { useGallery } from "@/contexts/gallery-context";
 import { modelCategories } from '@/config/models';
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
+import type { JobSettings } from "@/lib/schema";
 
 interface DesignerProps {
   onAuthRequired: () => void;
@@ -24,18 +24,23 @@ export function Designer({ onAuthRequired }: DesignerProps) {
   const { data: session } = useSession();
   const { uploadFile, uploadProgress, isAnyUploading } = useUpload();
   const controller = usePromptInputController();
-  const {
-    addGenerating,
-    addGenerated,
-    addError,
-    addGeneratingVideo,
-    startPollingVideo,
-    addVideoError,
-  } = useGallery();
+  const utils = api.useUtils();
 
-  const generateMutation = api.image.generate.useMutation();
-  const editMutation = api.image.edit.useMutation();
-  const createVideoMutation = api.video.create.useMutation();
+  const jobCreate = api.job.create.useMutation({
+    onSuccess: () => {
+      // Refresh the gallery
+      void utils.job.list.invalidate();
+      // Clear form
+      controller.textInput.clear();
+      controller.attachments.clear();
+      setUploadedFiles(new Map());
+    },
+    onError: (error) => {
+      console.error("Job creation error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to create job";
+      toast.error(errorMessage);
+    },
+  });
 
   // Handle newly added files
   const handleFilesAdded = async (newFiles: Array<{ id: string; url: string; filename?: string; mediaType?: string }>) => {
@@ -126,81 +131,69 @@ export function Designer({ onAuthRequired }: DesignerProps) {
       return;
     }
 
-    selectedModel === "sora-2"
-      ? await handleVideoGeneration(message.text || "")
-      : await handleImageGeneration(message.text || "");
-  };
+    const prompt = message.text || "";
 
-  const handleVideoGeneration = async (prompt: string) => {
-    const clientId = crypto.randomUUID();
-    const firstAttachmentId = controller.attachments.files[0]?.id;
-    const referenceImageUrl = firstAttachmentId ? uploadedFiles.get(firstAttachmentId) : undefined;
-
-    addGeneratingVideo({
-      clientId,
-      prompt,
-      model: selectedModel,
-      operation: "generate",
-      timestamp: new Date(),
-    });
-
-    try {
-      const result = await createVideoMutation.mutateAsync({
-        model: "sora-2",
-        prompt,
-        ...(referenceImageUrl && { input_reference: referenceImageUrl }),
-      });
-
-      startPollingVideo(clientId, result.jobId);
-      controller.textInput.clear();
-      controller.attachments.clear();
-      setUploadedFiles(new Map());
-    } catch (error) {
-      console.error("Video generation error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to generate video";
-      toast.error(errorMessage);
-      addVideoError(clientId, errorMessage);
-    }
-  };
-
-  const handleImageGeneration = async (prompt: string) => {
+    // Get uploaded image URLs
     const attachmentIds = controller.attachments.files.map((f) => f.id);
     const imageUrls = attachmentIds
       .map((id) => uploadedFiles.get(id))
       .filter((url): url is string => Boolean(url));
 
     const isEdit = imageUrls.length > 0;
-    const clientId = crypto.randomUUID();
 
-    addGenerating({
-      clientId,
-      prompt,
-      model: selectedModel as "nano-banana" | "gpt-image-1",
-      operation: isEdit ? "edit" : "generate",
-      timestamp: new Date(),
-    });
+    // Build job settings based on model and operation
+    let jobSettings: JobSettings;
 
-    try {
-      const result = isEdit
-        ? await editMutation.mutateAsync({
-            model: selectedModel as "nano-banana" | "gpt-image-1",
-            operation: "edit",
-            prompt,
-            images: imageUrls,
-          })
-        : await generateMutation.mutateAsync({
-            model: selectedModel as "nano-banana" | "gpt-image-1",
-            operation: "generate",
-            prompt,
-          });
-
-      void addGenerated(clientId, result.id);
-    } catch (error) {
-      console.error("Image operation error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to process image";
-      toast.error(errorMessage);
-      addError(clientId, errorMessage);
+    if (selectedModel === "sora-2") {
+      // Video generation
+      jobSettings = {
+        type: "sora-2-video",
+        model: "sora-2",
+        prompt,
+        seconds: "4",
+        size: "1280x720",
+        ...(imageUrls[0] && { input_reference: imageUrls[0] }),
+      };
+    } else if (selectedModel === "gpt-image-1") {
+      // GPT image generation or edit
+      if (isEdit) {
+        jobSettings = {
+          type: "gpt-image-1-edit",
+          model: "gpt-image-1",
+          prompt,
+          images: imageUrls,
+          quality: "high",
+        };
+      } else {
+        jobSettings = {
+          type: "gpt-image-1-generate",
+          model: "gpt-image-1",
+          prompt,
+          quality: "high",
+        };
+      }
+    } else {
+      // Nano banana generation or edit
+      if (isEdit) {
+        jobSettings = {
+          type: "nano-banana-edit",
+          model: "nano-banana",
+          prompt,
+          images: imageUrls,
+          aspectRatio: "16:9",
+        };
+      } else {
+        jobSettings = {
+          type: "nano-banana-generate",
+          model: "nano-banana",
+          prompt,
+          aspectRatio: "16:9",
+        };
+      }
     }
+
+    // Create the job
+    await jobCreate.mutateAsync(jobSettings);
   };
 
   const handleModelChange = (model: string) => {

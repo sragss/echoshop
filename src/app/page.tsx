@@ -3,9 +3,7 @@
 import { AuthDialog } from '@/components/auth-dialog';
 import { Designer } from '@/components/designer';
 import { Gallery } from '@/components/gallery';
-import { VideoPollingManager } from '@/components/video-polling-manager';
 import { PromptInputProvider } from '@/components/ai-elements/prompt-input';
-import { GalleryProvider } from '@/contexts/gallery-context';
 import { useState } from "react";
 import { useSession, signOut, signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -61,10 +59,7 @@ function HomeContent() {
 export default function Home() {
   return (
     <PromptInputProvider>
-      <GalleryProvider>
-        <VideoPollingManager />
-        <HomeContent />
-      </GalleryProvider>
+      <HomeContent />
     </PromptInputProvider>
   );
 }
