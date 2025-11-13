@@ -11,7 +11,8 @@ import { useUpload } from '@/hooks/use-upload';
 import { modelCategories } from '@/config/models';
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
-import type { JobSettings } from "@/lib/schema";
+import { jobSettingsSchema, type JobSettings } from "@/lib/schema";
+import type { Prisma } from "@/../../generated/prisma";
 
 interface DesignerProps {
   onAuthRequired: () => void;
@@ -33,10 +34,12 @@ export function Designer({ onAuthRequired }: DesignerProps) {
         if (!oldData) return oldData;
 
         // Create optimistic job entry matching the exact return type
+        // Use Zod to ensure the input is properly validated and typed
+        const parsedInput = jobSettingsSchema.parse(variables);
         const newJob: typeof oldData[0] = {
           id: data.jobId,
           type: variables.type,
-          input: variables as unknown,
+          input: parsedInput as Prisma.JsonValue, // Zod-validated input is safe to use as JsonValue
           status: 'pending',
           progress: 0,
           result: undefined,
@@ -168,7 +171,6 @@ export function Designer({ onAuthRequired }: DesignerProps) {
         model: "sora-2",
         prompt,
         seconds: "4",
-        size: "1280x720",
         ...(imageUrls[0] && { input_reference: imageUrls[0] }),
       };
     } else if (selectedModel === "gpt-image-1") {

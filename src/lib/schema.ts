@@ -64,8 +64,10 @@ export const soraSchema = z.object({
 
     prompt: z.string().min(1, "Prompt cannot be empty"),
 
-    seconds: z.enum(['4', '6', '10']).default('4').optional(),
-    size: z.enum(['720x1280', '1280x720', '1024x1024']).optional(),
+    // OpenAI Sora supports 4, 8, or 12 second videos
+    seconds: z.enum(['4', '8', '12']).default('4').optional(),
+    // OpenAI Sora supported sizes (portrait, landscape, square)
+    size: z.enum(['720x1280', '1280x720', '1024x1792', '1792x1024']).optional(),
     input_reference: z.string().url("Invalid blob URL").optional(),
 })
 

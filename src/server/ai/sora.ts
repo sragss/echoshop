@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { VideoCreateParams } from "openai/resources/videos";
 import { getEchoToken } from "../auth";
 import type { Sora2GenSettings } from '@/lib/schema';
 
@@ -36,8 +37,8 @@ async function getOpenAIClient(): Promise<OpenAI> {
 export async function generateSoraVideo(input: Sora2GenSettings): Promise<string> {
     const openai = await getOpenAIClient();
 
-    // Prepare parameters - using Record to work around SDK type strictness
-    const params: Record<string, unknown> = {
+    // Prepare parameters for video creation
+    const params: VideoCreateParams = {
         model: input.model,
         prompt: input.prompt,
         ...(input.seconds && { seconds: input.seconds }),
@@ -49,11 +50,18 @@ export async function generateSoraVideo(input: Sora2GenSettings): Promise<string
         const response = await fetchBlobAsResponse(input.input_reference);
         const blob = await response.blob();
         const contentType = response.headers.get('content-type') ?? 'image/png';
-        params.input_reference = new File([blob], 'reference.png', { type: contentType });
+        const inputRef = new File([blob], 'reference.png', { type: contentType });
+
+        params.input_reference = inputRef;
+
+        // Create video generation job with input reference
+        const job = await openai.videos.create(params);
+        return job.id;
     }
 
-    // Create video generation job
-    const job = await openai.videos.create(params as Parameters<typeof openai.videos.create>[0]);
+    // Create video generation job without input reference
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    const job = await openai.videos.create(params as any);
 
     return job.id;
 }
