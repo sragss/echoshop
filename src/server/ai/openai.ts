@@ -80,7 +80,7 @@ export async function editOpenAIImage(input: GptImage1EditSettings): Promise<Buf
         input.images.map(async (url, index) => {
             const response = await fetchBlobAsResponse(url);
             const blob = await response.blob();
-            const contentType = response.headers.get('content-type') || 'image/png';
+            const contentType = response.headers.get('content-type') ?? 'image/png';
 
             // OpenAI SDK expects File objects with proper type
             return new File([blob], `image-${index}.png`, { type: contentType });

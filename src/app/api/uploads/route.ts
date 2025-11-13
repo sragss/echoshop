@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         // Construct callback URL for onUploadCompleted
         // Priority: VERCEL_BLOB_CALLBACK_URL (for ngrok in local dev) > VERCEL_URL (production) > localhost fallback
         const baseUrl = process.env.VERCEL_BLOB_CALLBACK_URL
-          || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+          ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
         return {
           allowedContentTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],

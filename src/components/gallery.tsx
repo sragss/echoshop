@@ -2,7 +2,6 @@
 
 import { GalleryItem } from "./gallery-item";
 import { api } from "@/trpc/react";
-import { Button } from "@/components/ui/button";
 
 export function Gallery() {
   const { data: jobs, isLoading } = api.job.list.useQuery({ limit: 50 });

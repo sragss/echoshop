@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { jobSettingsSchema, type JobKind } from "@/lib/schema";
+import { jobSettingsSchema } from "@/lib/schema";
 import { createAndProcessJob, getJobStatus, listJobs } from "@/server/ai/job-runner";
 import type { ProcessorRegistry } from "@/server/ai/job-processor";
 
@@ -31,9 +31,11 @@ export const jobRouter = createTRPCRouter({
     create: protectedProcedure
         .input(jobSettingsSchema)
         .mutation(async ({ ctx, input }) => {
+            // TypeScript can't narrow the discriminated union automatically in the generic call
+            // The type assertion helps TypeScript understand the relationship
             return createAndProcessJob(
-                input.type as JobKind,
-                input as any, // Type is guaranteed by discriminated union
+                input.type,
+                input,
                 ctx.session.user.id,
                 processorRegistry
             );

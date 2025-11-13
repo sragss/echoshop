@@ -13,15 +13,15 @@ import { randomUUID } from 'crypto';
 export async function uploadGeneratedVideo(
     videoBuffer: Buffer,
     thumbnailBuffer: Buffer,
-    videoContentType: string = 'video/mp4',
-    thumbnailContentType: string = 'image/jpeg'
+    videoContentType = 'video/mp4',
+    thumbnailContentType = 'image/jpeg'
 ): Promise<{ id: string; videoUrl: string; thumbnailUrl: string }> {
     // Generate UUID upfront for the output video
     const id = randomUUID();
 
     // Determine file extensions from content types
-    const videoExtension = videoContentType.split('/')[1] || 'mp4';
-    const thumbnailExtension = thumbnailContentType.split('/')[1] || 'jpg';
+    const videoExtension = videoContentType.split('/')[1] ?? 'mp4';
+    const thumbnailExtension = thumbnailContentType.split('/')[1] ?? 'jpg';
 
     const videoFilename = `generated/videos/${id}.${videoExtension}`;
     const thumbnailFilename = `generated/videos/${id}-thumb.${thumbnailExtension}`;

@@ -37,7 +37,7 @@ export const soraVideoProcessor: JobProcessor<Sora2GenSettings, VideoResult> = {
             if (status.status === 'failed') {
                 return {
                     success: false,
-                    error: status.error || 'Video generation failed',
+                    error: status.error ?? 'Video generation failed',
                 };
             }
 

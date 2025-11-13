@@ -36,8 +36,8 @@ async function getOpenAIClient(): Promise<OpenAI> {
 export async function generateSoraVideo(input: Sora2GenSettings): Promise<string> {
     const openai = await getOpenAIClient();
 
-    // Prepare parameters - cast to any to work around SDK type strictness
-    const params: any = {
+    // Prepare parameters - using Record to work around SDK type strictness
+    const params: Record<string, unknown> = {
         model: input.model,
         prompt: input.prompt,
         ...(input.seconds && { seconds: input.seconds }),
@@ -48,12 +48,12 @@ export async function generateSoraVideo(input: Sora2GenSettings): Promise<string
     if (input.input_reference) {
         const response = await fetchBlobAsResponse(input.input_reference);
         const blob = await response.blob();
-        const contentType = response.headers.get('content-type') || 'image/png';
+        const contentType = response.headers.get('content-type') ?? 'image/png';
         params.input_reference = new File([blob], 'reference.png', { type: contentType });
     }
 
     // Create video generation job
-    const job = await openai.videos.create(params);
+    const job = await openai.videos.create(params as Parameters<typeof openai.videos.create>[0]);
 
     return job.id;
 }

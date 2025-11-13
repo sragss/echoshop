@@ -14,6 +14,7 @@ import type {
  * - "sync": Job completed synchronously, result is included
  * - string: Async job ID for polling
  */
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 export type JobHandle = "sync" | string;
 
 /**

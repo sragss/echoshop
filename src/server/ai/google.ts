@@ -84,7 +84,7 @@ export async function editGoogleImage(input: NanoBananaEditSettings): Promise<Bu
             const response = await fetchBlobAsResponse(url);
             const arrayBuffer = await response.arrayBuffer();
             const base64Image = Buffer.from(arrayBuffer).toString('base64');
-            const contentType = response.headers.get('content-type') || 'image/png';
+            const contentType = response.headers.get('content-type') ?? 'image/png';
 
             return {
                 inlineData: {

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
-import type { ImageResult, VideoResult } from "@/lib/schema";
+import { jobSettingsSchema, type ImageResult, type VideoResult, type JobSettings } from "@/lib/schema";
 
 type JobWithResult = {
   id: string;
@@ -25,6 +25,12 @@ type JobWithResult = {
 
 interface GalleryItemProps {
   job: JobWithResult;
+}
+
+// Helper to safely parse job input using Zod discriminated union
+function getJobInput(input: unknown): JobSettings | null {
+  const result = jobSettingsSchema.safeParse(input);
+  return result.success ? result.data : null;
 }
 
 /**
@@ -127,7 +133,7 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
         <div className="flex flex-col items-center justify-center h-full p-6 bg-gray-50">
           <XCircle className="h-10 w-10 text-gray-400 mb-3 flex-shrink-0" />
           <p className="text-xs text-gray-500 text-center leading-relaxed break-words overflow-hidden max-w-full">
-            {job.error || "Generation failed"}
+            {job.error ?? "Generation failed"}
           </p>
         </div>
       </div>
@@ -217,32 +223,40 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
                 className="w-full h-auto"
               />
             </div>
-            <div className="px-6 py-4 space-y-3">
-              <p className="text-sm text-gray-900">{(job.input as any)?.prompt || "No prompt"}</p>
-              <div className="flex gap-2 text-xs text-gray-500">
-                <span>{(job.input as any)?.model || job.type}</span>
-                {(job.input as any)?.images && (
+            <div className="p-4 space-y-2">
+              {(() => {
+                const input = getJobInput(job.input);
+                const images = input && 'images' in input ? input.images : undefined;
+                return (
                   <>
-                    <span>•</span>
-                    <span>Edit with {(job.input as any).images.length} reference image{(job.input as any).images.length > 1 ? 's' : ''}</span>
-                  </>
-                )}
-              </div>
-              {(job.input as any)?.images && (job.input as any).images.length > 0 && (
-                <div className="flex gap-2 flex-wrap pt-2">
-                  {(job.input as any).images.map((url: string, idx: number) => (
-                    <div key={idx} className="relative w-20 h-20 rounded border border-gray-200 overflow-hidden">
-                      <Image
-                        src={url}
-                        alt={`Input ${idx + 1}`}
-                        fill
-                        className="object-cover"
-                        sizes="80px"
-                      />
+                    <p className="text-sm text-gray-900">{input?.prompt ?? "No prompt"}</p>
+                    <div className="flex gap-2 text-xs text-gray-500">
+                      <span>{input?.model ?? job.type}</span>
+                      {images && (
+                        <>
+                          <span>•</span>
+                          <span>Edit with {images.length} reference image{images.length > 1 ? 's' : ''}</span>
+                        </>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                    {images && images.length > 0 && (
+                      <div className="flex gap-2 flex-wrap pt-2">
+                        {images.map((url: string, idx: number) => (
+                          <div key={idx} className="relative w-20 h-20 rounded border border-gray-200 overflow-hidden">
+                            <Image
+                              src={url}
+                              alt={`Input ${idx + 1}`}
+                              fill
+                              className="object-cover"
+                              sizes="80px"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </DialogContent>
         </Dialog>
@@ -291,23 +305,32 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
                 </video>
               </div>
             )}
-            <div className="px-6 py-4 space-y-2">
-              <p className="text-sm text-gray-900">{(job.input as any)?.prompt || "No prompt"}</p>
-              <div className="flex gap-2 text-xs text-gray-500">
-                <span>{(job.input as any)?.model || job.type}</span>
-                {(job.input as any)?.seconds && (
+            <div className="p-4 space-y-2">
+              {(() => {
+                const input = getJobInput(job.input);
+                const seconds = input && 'seconds' in input ? input.seconds : undefined;
+                const size = input && 'size' in input ? input.size : undefined;
+                return (
                   <>
-                    <span>•</span>
-                    <span>{(job.input as any).seconds}s</span>
+                    <p className="text-sm text-gray-900">{input?.prompt ?? "No prompt"}</p>
+                    <div className="flex gap-2 text-xs text-gray-500">
+                      <span>{input?.model ?? job.type}</span>
+                      {seconds && (
+                        <>
+                          <span>•</span>
+                          <span>{seconds}s</span>
+                        </>
+                      )}
+                      {size && (
+                        <>
+                          <span>•</span>
+                          <span>{size}</span>
+                        </>
+                      )}
+                    </div>
                   </>
-                )}
-                {(job.input as any)?.size && (
-                  <>
-                    <span>•</span>
-                    <span>{(job.input as any).size}</span>
-                  </>
-                )}
-              </div>
+                );
+              })()}
             </div>
           </DialogContent>
         </Dialog>

@@ -1,6 +1,6 @@
 import { db } from '@/server/db';
 import type { Prisma } from '@/../../generated/prisma';
-import type { JobKind, JobSettings } from '@/lib/schema';
+import type { JobKind } from '@/lib/schema';
 import type { JobInputMap, JobOutputMap, ProcessorRegistry } from './job-processor';
 
 /**
@@ -231,7 +231,7 @@ export async function listJobs(
         orderBy: {
             createdAt: 'desc',
         },
-        take: options?.limit || 50,
+        take: options?.limit ?? 50,
     });
 
     return jobs.map(job => ({

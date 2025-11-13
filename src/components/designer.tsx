@@ -36,7 +36,7 @@ export function Designer({ onAuthRequired }: DesignerProps) {
         const newJob: typeof oldData[0] = {
           id: data.jobId,
           type: variables.type,
-          input: variables as any,
+          input: variables as unknown,
           status: 'pending',
           progress: 0,
           result: undefined,
@@ -48,11 +48,6 @@ export function Designer({ onAuthRequired }: DesignerProps) {
         // Add to beginning of list
         return [newJob, ...oldData];
       });
-
-      // Clear form immediately
-      controller.textInput.clear();
-      controller.attachments.clear();
-      setUploadedFiles(new Map());
 
       // Background refetch to ensure consistency
       void utils.job.list.invalidate();
