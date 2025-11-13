@@ -25,4 +25,22 @@ export const balanceRouter = createTRPCRouter({
     const balance = await getEchoBalance();
     return { balance };
   }),
+
+  /**
+   * Create a payment link to add credits to the account
+   */
+  createPaymentLink: protectedProcedure.query(async () => {
+    const token = await getEchoToken();
+    if (!token) {
+      throw new Error("No Echo token available. User may not be authenticated.");
+    }
+    const echo = new EchoClient({apiKey: token});
+
+    const payment = await echo.payments.createPaymentLink({
+      amount: 10,
+      description: 'Buy $10 credits',
+    });
+
+    return { url: payment.paymentLink.url};
+  }),
 });

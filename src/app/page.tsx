@@ -26,6 +26,16 @@ function HomeContent() {
     enabled: !!session?.user,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+  const { data: paymentLink, refetch: createPaymentLink } = api.balance.createPaymentLink.useQuery(undefined, {
+    enabled: false,
+  });
+
+  const handleAddCredits = async () => {
+    const result = await createPaymentLink();
+    if (result.data?.url) {
+      window.open(result.data.url, '_blank');
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -60,6 +70,9 @@ function HomeContent() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleAddCredits}>
+                  Add $10
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => signOut()}>
                   Sign out
                 </DropdownMenuItem>
