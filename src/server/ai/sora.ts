@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import type { VideoCreateParams } from "openai/resources/videos";
 import { getEchoToken } from "../auth";
 import type { Sora2GenSettings } from '@/lib/schema';
+import { processImageForSora } from '@/lib/image-processing';
 
 /**
  * Fetch a blob URL and return as Response object
@@ -48,9 +49,18 @@ export async function generateSoraVideo(input: Sora2GenSettings): Promise<string
     // If input_reference is provided, fetch it and convert to File
     if (input.input_reference) {
         const response = await fetchBlobAsResponse(input.input_reference);
-        const blob = await response.blob();
-        const contentType = response.headers.get('content-type') ?? 'image/png';
-        const inputRef = new File([blob], 'reference.png', { type: contentType });
+        const arrayBuffer = await response.arrayBuffer();
+        const imageBuffer = Buffer.from(arrayBuffer);
+
+        // Process image to match target size (crop/resize as needed)
+        // Default to landscape if no size specified
+        const targetSize = input.size ?? '1280x720';
+        const processedBuffer = await processImageForSora(imageBuffer, targetSize);
+
+        // Create File from processed buffer
+        // Convert Buffer to Uint8Array for type compatibility
+        const uint8Array = new Uint8Array(processedBuffer);
+        const inputRef = new File([uint8Array], 'reference.png', { type: 'image/png' });
 
         params.input_reference = inputRef;
 

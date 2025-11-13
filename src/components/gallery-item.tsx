@@ -116,18 +116,14 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
 
   // Loading state
   if (job.status === "pending" || job.status === "loading") {
-    // Show progress bar only for video jobs
+    // Show progress percentage only for video jobs (when progress > 0)
     if (isVideoJob(job.type)) {
       return (
         <div className={CARD_CLASSES}>
-          <div className="flex flex-col items-center justify-center h-full p-4 bg-gray-50">
-            <div className="w-3/4 h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
-              <div
-                className="h-full bg-blue-500 transition-all duration-300"
-                style={{ width: `${job.progress}%` }}
-              />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">{job.progress}%</p>
+          <div className="flex flex-col items-center justify-center h-full p-4 bg-gray-50 animate-pulse">
+            {job.progress > 0 && (
+              <p className="text-xs text-gray-500 font-mono mb-1">{job.progress}%</p>
+            )}
             <LoadingTimer startTime={job.createdAt} />
           </div>
         </div>
