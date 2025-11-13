@@ -81,9 +81,22 @@ export type JobSettings = z.infer<typeof jobSettingsSchema>;
 
 export type JobKind = z.infer<typeof jobSettingsSchema>['type'];
 
+// Export individual settings types for type-safe processor mapping
+export type GptImage1GenSettings = z.infer<typeof gptGenerateSchema>;
+export type GptImage1EditSettings = z.infer<typeof gptEditSchema>;
+export type NanoBananaGenSettings = z.infer<typeof bananaGenerateSchema>;
+export type NanoBananaEditSettings = z.infer<typeof bananaEditSchema>;
+export type Sora2GenSettings = z.infer<typeof soraSchema>;
 
+// Output Schemas
+export const imageResultSchema = z.object({
+    imageUrl: z.string().url("Invalid image URL"),
+});
 
+export const videoResultSchema = z.object({
+    videoUrl: z.string().url("Invalid video URL"),
+    thumbnailUrl: z.string().url("Invalid thumbnail URL"),
+});
 
-
-
-// TODO(sragss): Output Schemas.
+export type ImageResult = z.infer<typeof imageResultSchema>;
+export type VideoResult = z.infer<typeof videoResultSchema>;

@@ -30,7 +30,7 @@ export async function generateSoraVideo(input: GenerateVideoInput): Promise<stri
     const params: any = {
         model: input.model,
         prompt: input.prompt,
-        ...(input.seconds && { seconds: parseInt(input.seconds) }),
+        ...(input.seconds && { seconds: input.seconds }),
         ...(input.size && { size: input.size }),
     };
 
