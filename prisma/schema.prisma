@@ -55,6 +55,8 @@ model User {
     uploads       Upload[]
     outputs       Output[]
     videoJobs     VideoJob[]
+    jobs          Job[]
+    results       Result[]
 }
 
 model VerificationToken {
@@ -104,4 +106,44 @@ model VideoJob {
 
     @@index([userId])
     @@index([status])
+}
+
+
+model Job {
+    id String @id @default(cuid())
+    userId String
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    type String
+    input Json
+
+    status String // pending, loading, complete, failed
+    progress Int @default(0) // 0-100
+
+    result Result?
+    error String?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([userId])
+    @@index([status])
+
+}
+
+model Result {
+    id String @id @default(cuid())
+
+    userId String
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    jobId String @unique
+    job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+    output Json
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([userId])
 }
