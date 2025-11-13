@@ -1,31 +1,17 @@
-import { generateGoogleImage } from '@/server/ai/google';
+import { generateOpenAIImage } from '@/server/ai/openai';
 import { uploadGeneratedImage } from '@/lib/blob-upload';
-import type { NanoBananaGenSettings, ImageResult } from '@/lib/schema';
+import type { GptImage1GenSettings, ImageResult } from '@/lib/schema';
 import type { JobProcessor } from '../job-processor';
-import type { GenerateImageInput } from '@/lib/generation-schema';
 
 /**
- * Transform NanoBananaGenSettings to GenerateImageInput format
- */
-function transformInput(input: NanoBananaGenSettings): GenerateImageInput {
-    return {
-        model: input.model,
-        operation: "generate",
-        prompt: input.prompt,
-        aspectRatio: input.aspectRatio,
-        imageSize: input.imageSize,
-    };
-}
-
-/**
- * Processor for Nano Banana (Google) image generation
+ * Processor for GPT Image 1 generation
  * Synchronous processor that generates an image and uploads it
  */
-export const nanoBananaGenProcessor: JobProcessor<NanoBananaGenSettings, ImageResult> = {
+export const gptImageGenProcessor: JobProcessor<GptImage1GenSettings, ImageResult> = {
     async start(input) {
         try {
-            // Call Google API to generate image
-            const imageBuffer = await generateGoogleImage(transformInput(input));
+            // Call OpenAI API to generate image
+            const imageBuffer = await generateOpenAIImage(input);
 
             // Upload to blob storage
             const { url } = await uploadGeneratedImage(imageBuffer, 'image/png');

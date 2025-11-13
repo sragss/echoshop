@@ -1,7 +1,17 @@
 import OpenAI from "openai";
 import { getEchoToken } from "../auth";
-import { fetchBlobAsResponse } from './image-helpers';
-import type { GenerateVideoInput } from '@/lib/video-schema';
+import type { Sora2GenSettings } from '@/lib/schema';
+
+/**
+ * Fetch a blob URL and return as Response object
+ */
+async function fetchBlobAsResponse(url: string): Promise<Response> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch from blob storage: ${url}`);
+  }
+  return response;
+}
 
 /**
  * Get an OpenAI client configured with Echo authentication
@@ -23,7 +33,7 @@ async function getOpenAIClient(): Promise<OpenAI> {
  * Generate a video using OpenAI's Sora-2 model
  * Returns the job ID for polling
  */
-export async function generateSoraVideo(input: GenerateVideoInput): Promise<string> {
+export async function generateSoraVideo(input: Sora2GenSettings): Promise<string> {
     const openai = await getOpenAIClient();
 
     // Prepare parameters - cast to any to work around SDK type strictness

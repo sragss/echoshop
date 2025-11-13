@@ -27,13 +27,35 @@ export function Designer({ onAuthRequired }: DesignerProps) {
   const utils = api.useUtils();
 
   const jobCreate = api.job.create.useMutation({
-    onSuccess: () => {
-      // Refresh the gallery
-      void utils.job.list.invalidate();
-      // Clear form
+    onSuccess: (data, variables) => {
+      // Optimistically add the new job to the cache immediately
+      utils.job.list.setData({ limit: 50 }, (oldData) => {
+        if (!oldData) return oldData;
+
+        // Create optimistic job entry matching the exact return type
+        const newJob: typeof oldData[0] = {
+          id: data.jobId,
+          type: variables.type,
+          input: variables as any,
+          status: 'pending',
+          progress: 0,
+          result: undefined,
+          error: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        // Add to beginning of list
+        return [newJob, ...oldData];
+      });
+
+      // Clear form immediately
       controller.textInput.clear();
       controller.attachments.clear();
       setUploadedFiles(new Map());
+
+      // Background refetch to ensure consistency
+      void utils.job.list.invalidate();
     },
     onError: (error) => {
       console.error("Job creation error:", error);

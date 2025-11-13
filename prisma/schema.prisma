@@ -53,8 +53,6 @@ model User {
     accounts      Account[]
     sessions      Session[]
     uploads       Upload[]
-    outputs       Output[]
-    videoJobs     VideoJob[]
     jobs          Job[]
     results       Result[]
 }
@@ -79,35 +77,6 @@ model Upload {
 
     @@index([userId])
 }
-
-model Output {
-    id        String   @id @default(cuid())
-    userId    String
-    input     Json
-    outputUrl String
-    createdAt DateTime @default(now())
-    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@index([userId])
-}
-
-model VideoJob {
-    id           String   @id @default(cuid())
-    userId       String
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-    input        Json
-    status       String   // pending, processing, completed, failed, cancelled
-    progress     Int      @default(0) // 0-100
-    videoUrl     String?
-    thumbnailUrl String?
-    errorMessage String?
-    createdAt    DateTime @default(now())
-    updatedAt    DateTime @updatedAt
-
-    @@index([userId])
-    @@index([status])
-}
-
 
 model Job {
     id String @id @default(cuid())

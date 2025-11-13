@@ -5,11 +5,11 @@ import { createAndProcessJob, getJobStatus, listJobs } from "@/server/ai/job-run
 import type { ProcessorRegistry } from "@/server/ai/job-processor";
 
 // Import all processors
-import { gptImageGenProcessor } from "@/server/ai/processors/gpt-image-gen_v2";
-import { gptImageEditProcessor } from "@/server/ai/processors/gpt-image-edit_v2";
-import { nanoBananaGenProcessor } from "@/server/ai/processors/nano-banana-gen_v2";
-import { nanoBananaEditProcessor } from "@/server/ai/processors/nano-banana-edit_v2";
-import { soraVideoProcessor } from "@/server/ai/processors/sora-video_v2";
+import { gptImageGenProcessor } from "@/server/ai/processors/gpt-image-gen";
+import { gptImageEditProcessor } from "@/server/ai/processors/gpt-image-edit";
+import { nanoBananaGenProcessor } from "@/server/ai/processors/nano-banana-gen";
+import { nanoBananaEditProcessor } from "@/server/ai/processors/nano-banana-edit";
+import { soraVideoProcessor } from "@/server/ai/processors/sora-video";
 
 /**
  * Processor registry mapping job types to their implementations

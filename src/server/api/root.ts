@@ -1,7 +1,4 @@
 import { uploadRouter } from '@/server/api/routers/upload';
-import { outputRouter } from '@/server/api/routers/output';
-import { imageRouter } from '@/server/api/routers/image';
-import { videoRouter } from '@/server/api/routers/video';
 import { jobRouter } from '@/server/api/routers/job';
 import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc';
 
@@ -12,9 +9,6 @@ import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc';
  */
 export const appRouter = createTRPCRouter({
   upload: uploadRouter,
-  output: outputRouter,
-  image: imageRouter,
-  video: videoRouter,
   job: jobRouter,
 });
 

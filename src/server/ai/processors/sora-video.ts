@@ -2,20 +2,6 @@ import { generateSoraVideo, pollSoraJob, downloadSoraVideo } from '@/server/ai/s
 import { uploadGeneratedVideo } from '@/lib/blob-video-upload';
 import type { Sora2GenSettings, VideoResult } from '@/lib/schema';
 import type { JobProcessor } from '../job-processor';
-import type { GenerateVideoInput } from '@/lib/video-schema';
-
-/**
- * Transform Sora2GenSettings to GenerateVideoInput format
- */
-function transformInput(input: Sora2GenSettings): GenerateVideoInput {
-    return {
-        model: input.model,
-        prompt: input.prompt,
-        seconds: input.seconds,
-        size: input.size,
-        input_reference: input.input_reference,
-    };
-}
 
 /**
  * Processor for Sora 2 video generation
@@ -25,7 +11,7 @@ export const soraVideoProcessor: JobProcessor<Sora2GenSettings, VideoResult> = {
     async start(input) {
         try {
             // Start Sora video generation
-            const soraJobId = await generateSoraVideo(transformInput(input));
+            const soraJobId = await generateSoraVideo(input);
 
             // Return async handle for polling
             return {
