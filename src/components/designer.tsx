@@ -218,6 +218,12 @@ export function Designer({ onAuthRequired }: DesignerProps) {
 
     // Create the job
     await jobCreate.mutateAsync(jobSettings);
+
+    // Invalidate balance to refetch after job submission
+    // Wait 2 seconds to allow backend time to decrement balance
+    setTimeout(() => {
+      void utils.balance.get.invalidate();
+    }, 2000);
   };
 
   const handleModelChange = (model: string) => {
