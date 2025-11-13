@@ -55,12 +55,9 @@ export async function generateGoogleImage(input: NanoBananaGenSettings): Promise
     const google = await getGoogleClient();
 
     // Build image config from input parameters
-    const imageConfig: { aspectRatio?: string; imageSize?: string } = {};
+    const imageConfig: { aspectRatio?: string } = {};
     if (input.aspectRatio) {
         imageConfig.aspectRatio = input.aspectRatio;
-    }
-    if (input.imageSize) {
-        imageConfig.imageSize = input.imageSize;
     }
 
     const response = await google.models.generateContent({
@@ -102,12 +99,9 @@ export async function editGoogleImage(input: NanoBananaEditSettings): Promise<Bu
     ];
 
     // Build image config from input parameters
-    const imageConfig: { aspectRatio?: string; imageSize?: string } = {};
+    const imageConfig: { aspectRatio?: string } = {};
     if (input.aspectRatio) {
         imageConfig.aspectRatio = input.aspectRatio;
-    }
-    if (input.imageSize) {
-        imageConfig.imageSize = input.imageSize;
     }
 
     const response = await google.models.generateContent({

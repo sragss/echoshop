@@ -32,10 +32,12 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { modelCategories } from '@/config/models';
-import { XIcon, PlusIcon, CheckIcon } from 'lucide-react';
+import { XIcon, PlusIcon, CheckIcon, SettingsIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { FileUIPart } from 'ai';
 import type { UploadProgress } from '@/hooks/use-upload';
+import type { ModelSettings, GptImageSettings, NanoBananaSettings, SoraSettings } from '@/lib/model-settings';
+import { ModelSettingsPopover } from '@/components/model-settings-popover';
 
 // Custom attachment component - square icon without text, left-aligned
 function CustomAttachment({
@@ -143,6 +145,8 @@ interface PromptBoxProps {
   uploadProgress?: Map<string, UploadProgress>;
   isUploading?: boolean;
   onClear?: () => void;
+  modelSettings: ModelSettings;
+  onModelSettingsChange: <K extends keyof ModelSettings>(modelId: K, newSettings: Partial<ModelSettings[K]>) => void;
 }
 
 // Component to watch for new attachments and trigger callback
@@ -207,6 +211,8 @@ export function PromptBox({
   uploadProgress,
   isUploading,
   onClear,
+  modelSettings,
+  onModelSettingsChange,
 }: PromptBoxProps) {
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const controller = usePromptInputController();
@@ -220,6 +226,23 @@ export function PromptBox({
     controller.textInput.clear();
     controller.attachments.clear();
     onClear?.();
+  };
+
+  // Get current model settings
+  const currentModelSettings = selectedModel === 'gpt-image-1'
+    ? modelSettings['gpt-image-1']
+    : selectedModel === 'nano-banana'
+    ? modelSettings['nano-banana']
+    : modelSettings['sora-2'];
+
+  const handleSettingsChange = (newSettings: Partial<GptImageSettings> | Partial<NanoBananaSettings> | Partial<SoraSettings>) => {
+    if (selectedModel === 'gpt-image-1') {
+      onModelSettingsChange('gpt-image-1', newSettings as Partial<GptImageSettings>);
+    } else if (selectedModel === 'nano-banana') {
+      onModelSettingsChange('nano-banana', newSettings as Partial<NanoBananaSettings>);
+    } else if (selectedModel === 'sora-2') {
+      onModelSettingsChange('sora-2', newSettings as Partial<SoraSettings>);
+    }
   };
 
   return (
@@ -276,6 +299,15 @@ export function PromptBox({
               </ModelSelectorList>
             </ModelSelectorContent>
           </ModelSelector>
+          <ModelSettingsPopover
+            modelId={selectedModel as 'gpt-image-1' | 'nano-banana' | 'sora-2'}
+            settings={currentModelSettings}
+            onSettingsChange={handleSettingsChange}
+          >
+            <PromptInputButton aria-label="Model settings">
+              <SettingsIcon className="size-4" />
+            </PromptInputButton>
+          </ModelSettingsPopover>
         </PromptInputTools>
         <div className="flex items-center gap-1">
           <ClearButton onClear={handleClear} />

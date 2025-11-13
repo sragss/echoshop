@@ -8,6 +8,7 @@ import {
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useUpload } from '@/hooks/use-upload';
+import { useModelSettings } from '@/hooks/use-model-settings';
 import { modelCategories } from '@/config/models';
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
@@ -24,6 +25,7 @@ export function Designer({ onAuthRequired }: DesignerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { data: session } = useSession();
   const { uploadFile, uploadProgress, isAnyUploading } = useUpload();
+  const { settings, updateSettings } = useModelSettings();
   const controller = usePromptInputController();
   const utils = api.useUtils();
 
@@ -166,47 +168,50 @@ export function Designer({ onAuthRequired }: DesignerProps) {
 
     if (selectedModel === "sora-2") {
       // Video generation
+      const soraSettings = settings['sora-2'];
       jobSettings = {
         type: "sora-2-video",
         model: "sora-2",
         prompt,
-        seconds: "4",
+        ...soraSettings,
         ...(imageUrls[0] && { input_reference: imageUrls[0] }),
       };
     } else if (selectedModel === "gpt-image-1") {
       // GPT image generation or edit
+      const gptSettings = settings['gpt-image-1'];
       if (isEdit) {
         jobSettings = {
           type: "gpt-image-1-edit",
           model: "gpt-image-1",
           prompt,
           images: imageUrls,
-          quality: "high",
+          ...gptSettings,
         };
       } else {
         jobSettings = {
           type: "gpt-image-1-generate",
           model: "gpt-image-1",
           prompt,
-          quality: "high",
+          ...gptSettings,
         };
       }
     } else {
       // Nano banana generation or edit
+      const bananaSettings = settings['nano-banana'];
       if (isEdit) {
         jobSettings = {
           type: "nano-banana-edit",
           model: "nano-banana",
           prompt,
           images: imageUrls,
-          aspectRatio: "16:9",
+          ...bananaSettings,
         };
       } else {
         jobSettings = {
           type: "nano-banana-generate",
           model: "nano-banana",
           prompt,
-          aspectRatio: "16:9",
+          ...bananaSettings,
         };
       }
     }
@@ -234,6 +239,8 @@ export function Designer({ onAuthRequired }: DesignerProps) {
         uploadProgress={uploadProgress}
         isUploading={isAnyUploading}
         onClear={handleClear}
+        modelSettings={settings}
+        onModelSettingsChange={updateSettings}
       />
     </div>
   );

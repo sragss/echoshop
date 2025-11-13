@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { XCircle, Copy, Plus } from "lucide-react";
+import { XCircle, Copy, Plus, Download } from "lucide-react";
 import { nanoid } from "nanoid";
 import { usePromptInputAttachments } from "@/components/ai-elements/prompt-input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -71,6 +71,7 @@ const CARD_CLASSES = "aspect-square relative overflow-hidden rounded-md border b
 
 export function GalleryItem({ job: initialJob }: GalleryItemProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   const attachments = usePromptInputAttachments();
   const utils = api.useUtils();
 
@@ -88,6 +89,23 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
 
   // Use live data if available, otherwise use initial data
   const job = liveJob ?? initialJob;
+
+  // Load actual image dimensions from blob store when dialog opens
+  useEffect(() => {
+    if (!dialogOpen) {
+      setImageDimensions(null);
+      return;
+    }
+
+    const imageResult = job.result as ImageResult;
+    if (!isImageJob(job.type) || !imageResult?.imageUrl) return;
+
+    const img = new window.Image();
+    img.onload = () => {
+      setImageDimensions({ width: img.width, height: img.height });
+    };
+    img.src = imageResult.imageUrl;
+  }, [dialogOpen, job.result, job.type]);
 
   // Invalidate list when job completes
   useEffect(() => {
@@ -176,6 +194,25 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
       attachments.addPreUploaded(id, imageResult.imageUrl, "image/jpeg", "gallery-image.jpg");
     };
 
+    const handleDownload = async () => {
+      try {
+        const response = await fetch(imageResult.imageUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `generated-image-${job.id}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success("Image downloaded");
+      } catch (error) {
+        console.error("Failed to download image:", error);
+        toast.error("Failed to download image");
+      }
+    };
+
     return (
       <>
         <div className={`${CARD_CLASSES} group cursor-pointer`}>
@@ -189,6 +226,17 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
             />
           </button>
           <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-200 pointer-events-none" />
+          <div className="absolute bottom-2 left-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+            <Button
+              onClick={handleDownload}
+              size="icon-sm"
+              variant="outline"
+              className="pointer-events-auto shadow-lg"
+              title="Download image"
+            >
+              <Download />
+            </Button>
+          </div>
           <div className="absolute bottom-2 right-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
             <Button
               onClick={handleCopy}
@@ -215,13 +263,23 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
             <DialogTitle className="sr-only">Image Details</DialogTitle>
             <div className="relative w-full">
-              <Image
-                src={imageResult.imageUrl}
-                alt="Generated image"
-                width={1024}
-                height={1024}
-                className="w-full h-auto"
-              />
+              {imageDimensions ? (
+                <Image
+                  src={imageResult.imageUrl}
+                  alt="Generated image"
+                  width={imageDimensions.width}
+                  height={imageDimensions.height}
+                  className="w-full h-auto"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full aspect-square bg-gray-100 animate-pulse" />
+              )}
+              {imageDimensions && (
+                <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-mono">
+                  {imageDimensions.width}×{imageDimensions.height}
+                </div>
+              )}
             </div>
             <div className="p-4 space-y-2">
               {(() => {

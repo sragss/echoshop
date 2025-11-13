@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 
-const gptBaseSchema = z.object({
+export const gptBaseSchema = z.object({
     model: z.literal('gpt-image-1'),
     prompt: z.string().min(1, "Prompt cannot be empty"),
 
@@ -34,15 +34,12 @@ export const gptGenerateSchema = gptBaseSchema.extend({
     type: z.literal("gpt-image-1-generate"),
 })
 
-const bananaBaseSchema = z.object({
+export const bananaBaseSchema = z.object({
     model: z.literal('nano-banana'),
     prompt: z.string().min(1, "Prompt cannot be empty"),
 
     // Aspect ratio - default: "1:1"
     aspectRatio: z.enum(["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]).default("1:1").optional(),
-
-    // Image size - default: "1K"
-    imageSize: z.enum(["1K", "2K", "4K"]).default("1K").optional(),
 });
 
 export const bananaEditSchema = bananaBaseSchema.extend({
@@ -66,8 +63,8 @@ export const soraSchema = z.object({
 
     // OpenAI Sora supports 4, 8, or 12 second videos
     seconds: z.enum(['4', '8', '12']).default('4').optional(),
-    // OpenAI Sora supported sizes (portrait, landscape, square)
-    size: z.enum(['720x1280', '1280x720', '1024x1792', '1792x1024']).optional(),
+    // OpenAI Sora supported sizes (portrait, landscape only)
+    size: z.enum(['720x1280', '1280x720']).optional(),
     input_reference: z.string().url("Invalid blob URL").optional(),
 })
 
