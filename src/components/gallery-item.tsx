@@ -123,10 +123,12 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
   // Error state
   if (job.status === "failed") {
     return (
-      <div className="aspect-square relative overflow-hidden rounded-md border-2 border-red-300 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
-        <div className="flex flex-col items-center justify-center h-full p-4 bg-red-50">
-          <XCircle className="h-12 w-12 text-red-400 mb-2" />
-          <p className="text-xs text-red-600 text-center mb-2">{job.error || "Generation failed"}</p>
+      <div className="aspect-square relative overflow-hidden rounded-md border border-gray-300 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="flex flex-col items-center justify-center h-full p-6 bg-gray-50">
+          <XCircle className="h-10 w-10 text-gray-400 mb-3 flex-shrink-0" />
+          <p className="text-xs text-gray-500 text-center leading-relaxed break-words overflow-hidden max-w-full">
+            {job.error || "Generation failed"}
+          </p>
         </div>
       </div>
     );
