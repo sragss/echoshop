@@ -32,7 +32,7 @@ function HomeContent() {
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-4xl px-4 py-6 flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-            EchoShop
+            EchotoShop
           </h1>
           {session?.user ? (
             <DropdownMenu>
