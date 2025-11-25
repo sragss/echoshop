@@ -11,15 +11,18 @@ import { db } from '@/server/db';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check authorization - Vercel automatically adds this header to cron requests
+    // Log headers for debugging
     const vercelCronHeader = request.headers.get('x-vercel-cron');
+    console.log('[Janitor] Cron job triggered');
+    console.log('[Janitor] x-vercel-cron header:', vercelCronHeader);
 
-    if (vercelCronHeader !== '1') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // TODO: Re-enable auth check once we confirm the header is working
+    // if (vercelCronHeader !== '1') {
+    //   return NextResponse.json(
+    //     { error: 'Unauthorized' },
+    //     { status: 401 }
+    //   );
+    // }
 
     // Calculate the cutoff time (20 minutes ago)
     const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
