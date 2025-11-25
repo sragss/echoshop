@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { db } from '@/server/db';
-import { env } from '@/env';
 
 /**
  * Janitor cron job that times out stale jobs
@@ -8,19 +7,14 @@ import { env } from '@/env';
  * This endpoint should be called every 15 minutes by a cron service (e.g., Vercel Cron)
  * It finds all jobs that haven't been updated in 20 minutes and marks them as failed
  *
- * Authentication: Requires JANITOR_SECRET in Authorization header
- *
- * Example curl:
- * curl -X POST https://your-app.com/api/cron/janitor \
- *   -H "Authorization: Bearer YOUR_JANITOR_SECRET"
+ * Authentication: Uses Vercel's x-vercel-cron header (automatically added by Vercel Cron)
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check authorization
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    // Check authorization - Vercel automatically adds this header to cron requests
+    const vercelCronHeader = request.headers.get('x-vercel-cron');
 
-    if (!token || token !== env.JANITOR_SECRET) {
+    if (vercelCronHeader !== '1') {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
