@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { type z } from 'zod';
 import { gptBaseSchema, gptEditSchema, bananaBaseSchema, soraSchema } from './schema';
 
 // Extract only the settings (omit model, type, prompt, images)

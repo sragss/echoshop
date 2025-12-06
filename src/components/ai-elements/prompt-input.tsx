@@ -561,10 +561,6 @@ export const PromptInput = ({
     [matchesAccept, maxFiles, maxFileSize, onError]
   );
 
-  const add = usingProvider
-    ? (files: File[] | FileList) => controller.attachments.add(files)
-    : addLocal;
-
   const addPreUploadedLocal = useCallback((id: string, url: string, mediaType?: string, filename?: string) => {
     setItems((prev) =>
       prev.concat([{
@@ -577,37 +573,61 @@ export const PromptInput = ({
     );
   }, []);
 
-  const addPreUploaded = usingProvider
-    ? (id: string, url: string, mediaType?: string, filename?: string) =>
-        controller.attachments.addPreUploaded(id, url, mediaType, filename)
-    : addPreUploadedLocal;
+  const add = useMemo(
+    () =>
+      usingProvider
+        ? (files: File[] | FileList) => controller.attachments.add(files)
+        : addLocal,
+    [usingProvider, controller, addLocal]
+  );
 
-  const remove = usingProvider
-    ? (id: string) => controller.attachments.remove(id)
-    : (id: string) =>
-        setItems((prev) => {
-          const found = prev.find((file) => file.id === id);
-          if (found?.url) {
-            URL.revokeObjectURL(found.url);
-          }
-          return prev.filter((file) => file.id !== id);
-        });
+  const addPreUploaded = useMemo(
+    () =>
+      usingProvider
+        ? (id: string, url: string, mediaType?: string, filename?: string) =>
+            controller.attachments.addPreUploaded(id, url, mediaType, filename)
+        : addPreUploadedLocal,
+    [usingProvider, controller, addPreUploadedLocal]
+  );
 
-  const clear = usingProvider
-    ? () => controller.attachments.clear()
-    : () =>
-        setItems((prev) => {
-          for (const file of prev) {
-            if (file.url) {
-              URL.revokeObjectURL(file.url);
-            }
-          }
-          return [];
-        });
+  const remove = useMemo(
+    () =>
+      usingProvider
+        ? (id: string) => controller.attachments.remove(id)
+        : (id: string) =>
+            setItems((prev) => {
+              const found = prev.find((file) => file.id === id);
+              if (found?.url) {
+                URL.revokeObjectURL(found.url);
+              }
+              return prev.filter((file) => file.id !== id);
+            }),
+    [usingProvider, controller]
+  );
 
-  const openFileDialog = usingProvider
-    ? () => controller.attachments.openFileDialog()
-    : openFileDialogLocal;
+  const clear = useMemo(
+    () =>
+      usingProvider
+        ? () => controller.attachments.clear()
+        : () =>
+            setItems((prev) => {
+              for (const file of prev) {
+                if (file.url) {
+                  URL.revokeObjectURL(file.url);
+                }
+              }
+              return [];
+            }),
+    [usingProvider, controller]
+  );
+
+  const openFileDialog = useMemo(
+    () =>
+      usingProvider
+        ? () => controller.attachments.openFileDialog()
+        : openFileDialogLocal,
+    [usingProvider, controller, openFileDialogLocal]
+  );
 
   // Let provider know about our hidden file input so external menus can call openFileDialog()
   useEffect(() => {
@@ -1094,82 +1114,78 @@ export const PromptInputSpeechButton = ({
   ...props
 }: PromptInputSpeechButtonProps) => {
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(
-    null
-  );
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const isRecognitionAvailable =
+    typeof window !== "undefined" &&
+    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-    ) {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      const speechRecognition = new SpeechRecognition();
+    if (!isRecognitionAvailable) return;
 
-      speechRecognition.continuous = true;
-      speechRecognition.interimResults = true;
-      speechRecognition.lang = "en-US";
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const speechRecognition = new SpeechRecognition();
 
-      speechRecognition.onstart = () => {
-        setIsListening(true);
-      };
+    speechRecognition.continuous = true;
+    speechRecognition.interimResults = true;
+    speechRecognition.lang = "en-US";
 
-      speechRecognition.onend = () => {
-        setIsListening(false);
-      };
+    speechRecognition.onstart = () => {
+      setIsListening(true);
+    };
 
-      speechRecognition.onresult = (event) => {
-        let finalTranscript = "";
+    speechRecognition.onend = () => {
+      setIsListening(false);
+    };
 
-        const results = Array.from(event.results);
+    speechRecognition.onresult = (event) => {
+      let finalTranscript = "";
 
-        for (const result of results) {
-          if (result.isFinal) {
-            finalTranscript += result[0]?.transcript ?? "";
-          }
+      const results = Array.from(event.results);
+
+      for (const result of results) {
+        if (result.isFinal) {
+          finalTranscript += result[0]?.transcript ?? "";
         }
+      }
 
-        if (finalTranscript && textareaRef?.current) {
-          const textarea = textareaRef.current;
-          const currentValue = textarea.value;
-          const newValue =
-            currentValue + (currentValue ? " " : "") + finalTranscript;
+      if (finalTranscript && textareaRef?.current) {
+        const textarea = textareaRef.current;
+        const currentValue = textarea.value;
+        const newValue =
+          currentValue + (currentValue ? " " : "") + finalTranscript;
 
-          textarea.value = newValue;
-          textarea.dispatchEvent(new Event("input", { bubbles: true }));
-          onTranscriptionChange?.(newValue);
-        }
-      };
+        textarea.value = newValue;
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        onTranscriptionChange?.(newValue);
+      }
+    };
 
-      speechRecognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        setIsListening(false);
-      };
+    speechRecognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+    };
 
-      recognitionRef.current = speechRecognition;
-      setRecognition(speechRecognition);
-    }
+    recognitionRef.current = speechRecognition;
 
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
     };
-  }, [textareaRef, onTranscriptionChange]);
+  }, [isRecognitionAvailable, textareaRef, onTranscriptionChange]);
 
   const toggleListening = useCallback(() => {
-    if (!recognition) {
+    if (!recognitionRef.current) {
       return;
     }
 
     if (isListening) {
-      recognition.stop();
+      recognitionRef.current.stop();
     } else {
-      recognition.start();
+      recognitionRef.current.start();
     }
-  }, [recognition, isListening]);
+  }, [isListening]);
 
   return (
     <PromptInputButton
@@ -1178,7 +1194,7 @@ export const PromptInputSpeechButton = ({
         isListening && "animate-pulse bg-accent text-accent-foreground",
         className
       )}
-      disabled={!recognition}
+      disabled={!isRecognitionAvailable}
       onClick={toggleListening}
       {...props}
     >

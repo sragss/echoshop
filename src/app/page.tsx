@@ -26,7 +26,7 @@ function HomeContent() {
     enabled: !!session?.user,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
-  const { data: paymentLink, refetch: createPaymentLink } = api.balance.createPaymentLink.useQuery(undefined, {
+  const { refetch: createPaymentLink } = api.balance.createPaymentLink.useQuery(undefined, {
     enabled: false,
   });
 

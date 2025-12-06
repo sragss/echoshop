@@ -1,22 +1,20 @@
-import { FlatCompat } from "@eslint/eslintrc";
+import { createRequire } from "module";
 import tseslint from "typescript-eslint";
 
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
+const require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const nextConfig = require("eslint-config-next/core-web-vitals");
 
 export default tseslint.config(
   {
-    ignores: [".next"],
+    ignores: [".next", "generated"],
   },
-  ...compat.extends("next/core-web-vitals"),
+  ...nextConfig,
+  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
   {
     files: ["**/*.ts", "**/*.tsx"],
-    extends: [
-      ...tseslint.configs.recommended,
-      ...tseslint.configs.recommendedTypeChecked,
-      ...tseslint.configs.stylisticTypeChecked,
-    ],
     rules: {
       "@typescript-eslint/array-type": "off",
       "@typescript-eslint/consistent-type-definitions": "off",

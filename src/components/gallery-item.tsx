@@ -105,19 +105,29 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
 
   // Load actual image dimensions from blob store when dialog opens
   useEffect(() => {
-    if (!dialogOpen) {
-      setImageDimensions(null);
-      return;
-    }
+    if (!dialogOpen) return;
 
     const imageResult = job.result as ImageResult;
     if (!isImageJob(job.type) || !imageResult?.imageUrl) return;
 
+    let cancelled = false;
+
     const img = new window.Image();
     img.onload = () => {
-      setImageDimensions({ width: img.width, height: img.height });
+      if (!cancelled) {
+        setImageDimensions({ width: img.width, height: img.height });
+      }
+    };
+    img.onerror = () => {
+      if (!cancelled) {
+        setImageDimensions(null);
+      }
     };
     img.src = imageResult.imageUrl;
+
+    return () => {
+      cancelled = true;
+    };
   }, [dialogOpen, job.result, job.type]);
 
   // Invalidate list when job completes

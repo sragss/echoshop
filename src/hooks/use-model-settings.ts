@@ -4,23 +4,27 @@ import { type ModelSettings, defaultModelSettings } from '@/lib/model-settings';
 const STORAGE_KEY = 'echoshop-model-settings';
 
 export function useModelSettings() {
-  const [settings, setSettings] = useState<ModelSettings>(defaultModelSettings);
+  const [settings, setSettings] = useState<ModelSettings>(() => {
+    // Load from localStorage on mount using lazy initialization
+    if (typeof window === 'undefined') {
+      return defaultModelSettings;
+    }
 
-  // Load from localStorage on mount
-  useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as ModelSettings;
-        setSettings(parsed);
+        return JSON.parse(stored) as ModelSettings;
       }
     } catch (error) {
       console.error('Failed to load model settings from localStorage:', error);
     }
-  }, []);
+    return defaultModelSettings;
+  });
 
   // Save to localStorage whenever settings change
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     } catch (error) {
