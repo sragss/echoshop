@@ -56,33 +56,51 @@ function HomeContent() {
           {session?.user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2 hover:bg-primary/10 hover:text-primary">
-                  <Image
-                    src="/logo/light.svg"
-                    alt="Echo"
-                    width={20}
-                    height={20}
-                  />
-                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                </Button>
+                <button className="flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-[0_10px_35px_-25px_rgba(15,23,42,0.5)] transition-all hover:shadow-[0_12px_40px_-25px_rgba(15,23,42,0.6)] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
+                  <div className="relative h-5 w-5 rounded-full bg-gradient-to-br from-slate-100 to-white ring-1 ring-slate-200/60 flex items-center justify-center">
+                    <Image
+                      src="/logo/light.svg"
+                      alt="Echo"
+                      width={14}
+                      height={14}
+                      className="opacity-80"
+                    />
+                  </div>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-500 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="px-2 py-3">
-                  <div className="text-xs text-gray-500 mb-1">Balance</div>
-                  <div className="text-lg font-mono font-semibold">
+              <DropdownMenuContent
+                align="end"
+                className="w-56 rounded-xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.5)] p-2"
+              >
+                <DropdownMenuLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wide px-3 pt-2 pb-2">
+                  Account
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-slate-200/60" />
+                <div className="px-3 py-4 my-2">
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Balance
+                    </div>
+                  </div>
+                  <div className="text-3xl font-mono font-bold tabular-nums bg-gradient-to-br from-slate-600 to-slate-900 bg-clip-text text-transparent">
                     {balanceData?.balance !== undefined
                       ? `$${balanceData.balance.toFixed(2)}`
                       : '...'
                     }
                   </div>
                 </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleAddCredits}>
+                <DropdownMenuSeparator className="bg-slate-200/60" />
+                <DropdownMenuItem
+                  onClick={handleAddCredits}
+                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:bg-slate-100 cursor-pointer transition-colors"
+                >
                   Add $10
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => signOut()}>
+                <DropdownMenuItem
+                  onClick={() => signOut()}
+                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 cursor-pointer transition-colors"
+                >
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
