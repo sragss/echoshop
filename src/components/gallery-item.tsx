@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { XCircle, Copy, Plus, Download } from "lucide-react";
+import { XCircle, Copy, Plus, Download, Share2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { usePromptInputAttachments } from "@/components/ai-elements/prompt-input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -67,12 +67,65 @@ const isVideoJob = (type: string): boolean => {
   return type === "sora-2-video";
 };
 
+/**
+ * Detect if user is on a mobile device
+ */
+function isMobileDevice(): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+/**
+ * Universal download/share function for mobile and desktop
+ * On mobile (iOS/Android): Uses Share API which shows "Save to Photos"
+ * On desktop: Downloads directly
+ */
+async function downloadOrShareMedia(
+  url: string,
+  filename: string,
+  mimeType: string
+): Promise<void> {
+  const response = await fetch(url);
+  const blob = await response.blob();
+
+  // Only use Share API on mobile devices
+  if (isMobileDevice() && navigator.share && navigator.canShare) {
+    const file = new File([blob], filename, { type: mimeType });
+
+    // Check if we can share this file
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: filename,
+        });
+        return;
+      } catch (error) {
+        // User cancelled or share failed, fall through to download
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Share failed:', error);
+        }
+      }
+    }
+  }
+
+  // Desktop or fallback: Regular download
+  const objectUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(objectUrl);
+  document.body.removeChild(a);
+}
+
 const CARD_CLASSES =
   "aspect-square relative overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.45)] ring-1 ring-inset ring-white/60 transition-transform duration-200 animate-in fade-in slide-in-from-left-4 duration-500";
 
 export function GalleryItem({ job: initialJob }: GalleryItemProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [isMobile] = useState(() => typeof window !== 'undefined' && isMobileDevice());
   const attachments = usePromptInputAttachments();
   const utils = api.useUtils();
 
@@ -223,22 +276,18 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
       attachments.addPreUploaded(id, imageResult.imageUrl, "image/jpeg", "gallery-image.jpg");
     };
 
-    const handleDownload = async () => {
+    const handleDownload = async (e: React.MouseEvent) => {
+      e.stopPropagation();
       try {
-        const response = await fetch(imageResult.imageUrl);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `generated-image-${job.id}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success("Image downloaded");
+        await downloadOrShareMedia(
+          imageResult.imageUrl,
+          `generated-image-${job.id}.jpg`,
+          'image/jpeg'
+        );
+        toast.success(isMobile ? "Image shared" : "Image downloaded");
       } catch (error) {
-        console.error("Failed to download image:", error);
-        toast.error("Failed to download image");
+        console.error("Failed to download/share image:", error);
+        toast.error(isMobile ? "Failed to share image" : "Failed to download image");
       }
     };
 
@@ -271,9 +320,9 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
               size="icon-sm"
               variant="outline"
               className="pointer-events-auto shadow-lg"
-              title="Download image"
+              title={isMobile ? "Share image" : "Download image"}
             >
-              <Download />
+              {isMobile ? <Share2 /> : <Download />}
             </Button>
           </div>
           <div className="absolute bottom-2 right-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
@@ -364,19 +413,18 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
   if (isVideoJob(job.type)) {
     const videoResult = job.result as VideoResult;
 
-    const handleDownload = (e: React.MouseEvent) => {
+    const handleDownload = async (e: React.MouseEvent) => {
       e.stopPropagation();
       try {
-        const a = document.createElement("a");
-        a.href = `${videoResult.videoUrl}${videoResult.videoUrl.includes('?') ? '&' : '?'}download=1`;
-        a.download = `generated-video-${job.id}.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        toast.success("Video download started");
+        await downloadOrShareMedia(
+          videoResult.videoUrl,
+          `generated-video-${job.id}.mp4`,
+          'video/mp4'
+        );
+        toast.success(isMobile ? "Video shared" : "Video downloaded");
       } catch (error) {
-        console.error("Failed to download video:", error);
-        toast.error("Failed to download video");
+        console.error("Failed to download/share video:", error);
+        toast.error(isMobile ? "Failed to share video" : "Failed to download video");
       }
     };
 
@@ -413,9 +461,9 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
               size="icon-sm"
               variant="outline"
               className="pointer-events-auto shadow-lg"
-              title="Download video"
+              title={isMobile ? "Share video" : "Download video"}
             >
-              <Download />
+              {isMobile ? <Share2 /> : <Download />}
             </Button>
           </div>
         </div>
