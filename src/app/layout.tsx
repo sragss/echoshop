@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     siteName: "EchotoShop",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "EchotoShop - AI Image & Video Generation",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "EchotoShop - AI Image & Video Generation",
     description: "Generate and edit stunning images and videos with AI. Powered by Nano Banana, GPT Image, and Sora 2.",
-    images: ["/og-image.png"],
+    images: ["/og-image.jpg"],
   },
   icons: {
     icon: [

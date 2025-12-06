@@ -67,7 +67,8 @@ const isVideoJob = (type: string): boolean => {
   return type === "sora-2-video";
 };
 
-const CARD_CLASSES = "aspect-square relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500";
+const CARD_CLASSES =
+  "aspect-square relative overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.45)] ring-1 ring-inset ring-white/60 transition-transform duration-200 animate-in fade-in slide-in-from-left-4 duration-500";
 
 export function GalleryItem({ job: initialJob }: GalleryItemProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -89,6 +90,18 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
 
   // Use live data if available, otherwise use initial data
   const job = liveJob ?? initialJob;
+  const input = getJobInput(job.input);
+  const modelLabel =
+    input?.model ??
+    (job.type.includes("nano-banana")
+      ? "Nano Banana"
+      : job.type.includes("gpt-image-1")
+      ? "GPT Image"
+      : job.type.includes("sora")
+      ? "Sora"
+      : "AI Model");
+  const isEditJobType =
+    input && "images" in input && Array.isArray((input as { images?: unknown }).images);
 
   // Load actual image dimensions from blob store when dialog opens
   useEffect(() => {
@@ -120,11 +133,14 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
     if (isVideoJob(job.type)) {
       return (
         <div className={CARD_CLASSES}>
-          <div className="flex flex-col items-center justify-center h-full p-4 bg-gray-50 animate-pulse">
+          <div className="flex flex-col items-center justify-center h-full gap-2 bg-gradient-to-br from-slate-50 via-white to-slate-100">
             {job.progress > 0 && (
-              <p className="text-xs text-gray-500 font-mono mb-1">{job.progress}%</p>
+              <p className="text-xs text-slate-600 font-mono">{job.progress}%</p>
             )}
             <LoadingTimer startTime={job.createdAt} />
+            <span className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-slate-200/80">
+              Rendering video
+            </span>
           </div>
         </div>
       );
@@ -133,8 +149,14 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
     // For image jobs, just show a pulse animation
     return (
       <div className={CARD_CLASSES}>
-        <div className="flex items-center justify-center h-full bg-gray-100 animate-pulse">
-          <LoadingTimer startTime={job.createdAt} />
+        <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100">
+          <div className="flex flex-col items-center gap-2 text-slate-500">
+            <div className="h-12 w-12 rounded-full bg-white/80 shadow-[0_12px_35px_-25px_rgba(15,23,42,0.6)]" />
+            <LoadingTimer startTime={job.createdAt} />
+            <span className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-slate-200/80">
+              Generating
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -143,11 +165,12 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
   // Error state
   if (job.status === "failed") {
     return (
-      <div className="aspect-square relative overflow-hidden rounded-md border border-gray-300 bg-white shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
-        <div className="flex flex-col items-center justify-center h-full p-6 bg-gray-50">
-          <XCircle className="h-10 w-10 text-gray-400 mb-3 flex-shrink-0" />
-          <p className="text-xs text-gray-500 text-center leading-relaxed break-words overflow-hidden max-w-full">
-            {job.error ?? "Generation failed"}
+      <div className={`${CARD_CLASSES} bg-gradient-to-br from-rose-50 via-white to-white`}>
+        <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+          <XCircle className="h-10 w-10 text-rose-400 flex-shrink-0" />
+          <p className="text-sm font-semibold text-slate-800">Request timed out</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            {job.error ?? "Generation failed"} · Try adjusting the prompt or re-running.
           </p>
         </div>
       </div>
@@ -211,7 +234,7 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
 
     return (
       <>
-        <div className={`${CARD_CLASSES} group cursor-pointer`}>
+        <div className={`${CARD_CLASSES} group cursor-pointer hover:-translate-y-1 hover:shadow-[0_24px_80px_-45px_rgba(15,23,42,0.6)]`}>
           <button onClick={() => setDialogOpen(true)} className="w-full h-full">
             <Image
               src={imageResult.imageUrl}
@@ -221,7 +244,17 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
               sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
             />
           </button>
-          <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-200 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent opacity-0 transition-opacity duration-200 md:group-hover:opacity-100 pointer-events-none" />
+          <div className="absolute left-2 top-2 flex items-center gap-2">
+            <span className="rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold text-slate-800 ring-1 ring-white/60 shadow-[0_10px_35px_-25px_rgba(15,23,42,0.6)]">
+              {modelLabel}
+            </span>
+            {isEditJobType && (
+              <span className="rounded-full bg-slate-900/80 px-2 py-1 text-[11px] font-semibold text-white shadow-[0_10px_35px_-25px_rgba(15,23,42,0.6)]">
+                Edit
+              </span>
+            )}
+          </div>
           <div className="absolute bottom-2 left-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
             <Button
               onClick={handleDownload}
@@ -334,8 +367,16 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
                 sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
               />
             )}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
-              <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+            <div className="absolute left-2 top-2 flex items-center gap-2">
+              <span className="rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold text-slate-800 ring-1 ring-white/60 shadow-[0_10px_35px_-25px_rgba(15,23,42,0.6)]">
+                {modelLabel}
+              </span>
+              <span className="rounded-full bg-slate-900/80 px-2 py-1 text-[11px] font-semibold text-white shadow-[0_10px_35px_-25px_rgba(15,23,42,0.6)]">
+                Video
+              </span>
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/35 transition-colors">
+              <div className="w-16 h-16 rounded-full bg-white/95 flex items-center justify-center shadow-[0_18px_55px_-40px_rgba(15,23,42,0.7)]">
                 <div className="w-0 h-0 border-l-[20px] border-l-black border-y-[12px] border-y-transparent ml-1" />
               </div>
             </div>

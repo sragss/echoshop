@@ -38,16 +38,25 @@ function HomeContent() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-4xl px-4 py-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-            EchotoShop
-          </h1>
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-white via-white/60 to-[#f3f5fb]">
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+        <div className="mx-auto flex items-center justify-between px-6 py-5 max-w-5xl">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo_v2.png"
+              alt="Echo"
+              width={44}
+              height={44}
+              priority
+            />
+            <h1 className="text-xl font-semibold leading-tight text-slate-900">
+              EchotoShop
+            </h1>
+          </div>
           {session?.user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button variant="ghost" size="sm" className="gap-2 hover:bg-primary/10 hover:text-primary">
                   <Image
                     src="/logo/light.svg"
                     alt="Echo"
@@ -93,8 +102,10 @@ function HomeContent() {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col items-center px-4 py-8">
-        <Designer onAuthRequired={() => setShowAuthDialog(true)} />
+      <main className="flex flex-1 flex-col items-center px-4 py-10">
+        <section className="w-full max-w-3xl">
+          <Designer onAuthRequired={() => setShowAuthDialog(true)} />
+        </section>
         {session?.user && <Gallery />}
       </main>
 

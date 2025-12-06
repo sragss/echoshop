@@ -246,9 +246,15 @@ export function PromptBox({
   };
 
   return (
-    <PromptInput onSubmit={onSubmit} accept="image/*" globalDrop multiple>
+    <PromptInput
+      onSubmit={onSubmit}
+      accept="image/*"
+      globalDrop
+      multiple
+      className="space-y-2"
+    >
       <AttachmentWatcher onFilesAdded={onFilesAdded} />
-      <PromptInputAttachments className="w-full">
+      <PromptInputAttachments className="w-full rounded-2xl border border-slate-200/70 bg-white/75 px-3 py-2 shadow-[0_12px_40px_-30px_rgba(15,23,42,0.55)] ring-1 ring-inset ring-white/60">
         {(attachment) => (
           <CustomAttachment
             data={attachment}
@@ -259,15 +265,16 @@ export function PromptBox({
       <PromptInputBody>
         <PromptInputTextarea
           ref={textareaRef}
-          placeholder="Type your message..."
+          className="px-4 text-base"
+          placeholder="Describe the edit or scene. Paste or drop reference images."
         />
       </PromptInputBody>
-      <PromptInputFooter>
-        <PromptInputTools>
+      <PromptInputFooter className="border-t border-slate-200/70 bg-white/70 px-3 py-2">
+        <PromptInputTools className="gap-2">
           <FileDialogButton />
           <ModelSelector open={modelSelectorOpen} onOpenChange={setModelSelectorOpen}>
             <ModelSelectorTrigger asChild>
-              <PromptInputButton>
+              <PromptInputButton className="rounded-full border border-slate-200/70 bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.45)]">
                 {selectedModelData?.provider && (
                   <ModelSelectorLogo provider={selectedModelData.provider} />
                 )}
@@ -304,14 +311,19 @@ export function PromptBox({
             settings={currentModelSettings}
             onSettingsChange={handleSettingsChange}
           >
-            <PromptInputButton aria-label="Model settings">
+            <PromptInputButton aria-label="Model settings" className="rounded-full bg-white/80 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.45)]">
               <SettingsIcon className="size-4" />
             </PromptInputButton>
           </ModelSettingsPopover>
         </PromptInputTools>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <ClearButton onClear={handleClear} />
-          <PromptInputSubmit disabled={isUploading} />
+          <PromptInputSubmit
+            disabled={isUploading}
+            className="rounded-full px-3 py-2 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.55)]"
+            size="sm"
+            variant="default"
+          />
         </div>
       </PromptInputFooter>
     </PromptInput>
