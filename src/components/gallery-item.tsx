@@ -364,6 +364,22 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
   if (isVideoJob(job.type)) {
     const videoResult = job.result as VideoResult;
 
+    const handleDownload = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      try {
+        const a = document.createElement("a");
+        a.href = `${videoResult.videoUrl}${videoResult.videoUrl.includes('?') ? '&' : '?'}download=1`;
+        a.download = `generated-video-${job.id}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success("Video download started");
+      } catch (error) {
+        console.error("Failed to download video:", error);
+        toast.error("Failed to download video");
+      }
+    };
+
     return (
       <>
         <div className={`${CARD_CLASSES} group cursor-pointer`}>
@@ -391,6 +407,17 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
               </div>
             </div>
           </button>
+          <div className="absolute bottom-2 left-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+            <Button
+              onClick={handleDownload}
+              size="icon-sm"
+              variant="outline"
+              className="pointer-events-auto shadow-lg"
+              title="Download video"
+            >
+              <Download />
+            </Button>
+          </div>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
