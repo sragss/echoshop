@@ -27,6 +27,7 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { HapticInputGroupButton } from "@/components/ui/haptic-button";
 import {
   Select,
   SelectContent,
@@ -1038,7 +1039,7 @@ export const PromptInputSubmit = ({
   }
 
   return (
-    <InputGroupButton
+    <HapticInputGroupButton
       aria-label="Submit"
       className={cn(className)}
       size={size}
@@ -1047,7 +1048,7 @@ export const PromptInputSubmit = ({
       {...props}
     >
       {children ?? Icon}
-    </InputGroupButton>
+    </HapticInputGroupButton>
   );
 };
 
