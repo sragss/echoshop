@@ -76,7 +76,7 @@ function isMobileDevice(): boolean {
 
 /**
  * Universal download/share function for mobile and desktop
- * On mobile (iOS/Android): Uses Share API which shows "Save to Photos"
+ * On mobile (iOS/Android): Uses Share API - if user cancels, nothing happens
  * On desktop: Downloads directly
  */
 async function downloadOrShareMedia(
@@ -87,28 +87,17 @@ async function downloadOrShareMedia(
   const response = await fetch(url);
   const blob = await response.blob();
 
-  // Only use Share API on mobile devices
-  if (isMobileDevice() && navigator.share && navigator.canShare) {
+  // Mobile: Use Share API only (no fallback)
+  if (isMobileDevice()) {
     const file = new File([blob], filename, { type: mimeType });
-
-    // Check if we can share this file
-    if (navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: filename,
-        });
-        return;
-      } catch (error) {
-        // User cancelled or share failed, fall through to download
-        if ((error as Error).name !== 'AbortError') {
-          console.error('Share failed:', error);
-        }
-      }
-    }
+    await navigator.share({
+      files: [file],
+      title: filename,
+    });
+    return;
   }
 
-  // Desktop or fallback: Regular download
+  // Desktop: Regular download
   const objectUrl = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = objectUrl;
@@ -286,6 +275,10 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
         );
         toast.success(isMobile ? "Image shared" : "Image downloaded");
       } catch (error) {
+        // Don't show error if user cancelled the share dialog
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
         console.error("Failed to download/share image:", error);
         toast.error(isMobile ? "Failed to share image" : "Failed to download image");
       }
@@ -423,6 +416,10 @@ export function GalleryItem({ job: initialJob }: GalleryItemProps) {
         );
         toast.success(isMobile ? "Video shared" : "Video downloaded");
       } catch (error) {
+        // Don't show error if user cancelled the share dialog
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
         console.error("Failed to download/share video:", error);
         toast.error(isMobile ? "Failed to share video" : "Failed to download video");
       }
